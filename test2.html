@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flappy bird</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #70c5ce;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #70c5ce;
+    }
+    #leaderboard {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 6px;
+      max-width: 200px;
+    }
+    #leaderboard h2 {
+      margin-top: 0;
+      font-size: 16px;
+    }
+    #leaderboard ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="320" height="480"></canvas>
+
+<div id="leaderboard">
+  <h2>🏆 Leaderboard</h2>
+  <ul id="scoreList"></ul>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let bird, pipes, frameCount, score, gameOver;
+
+  function initGame() {
+    bird = { x: 50, y: 150, width: 34, height: 24, gravity: 0.6, lift: -10, velocity: 0 };
+    pipes = [];
+    frameCount = 0;
+    score = 0;
+    gameOver = false;
+    loop();
+  }
+
+  function createPipe() {
+    let gap = 170;
+    let topHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
+    pipes.push({ x: canvas.width, topHeight: topHeight, bottomY: topHeight + gap, width: 50, speed: 2 });
+  }
+
+  function drawBird() {
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+  }
+
+  function drawPipes() {
+    ctx.fillStyle = 'green';
+    pipes.forEach(pipe => {
+      ctx.fillRect(pipe.x, 0, pipe.width, pipe.topHeight);
+      ctx.fillRect(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY);
+    });
+  }
+
+  function update() {
+    if (gameOver) return;
+    frameCount++;
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+
+    if (bird.y + bird.height > canvas.height || bird.y < 0) {
+      endGame();
+    }
+
+    if (frameCount % 90 === 0) {
+      createPipe();
+    }
+
+    pipes.forEach((pipe, index) => {
+      pipe.x -= pipe.speed;
+
+      if (
+        bird.x + bird.width > pipe.x &&
+        bird.x < pipe.x + pipe.width &&
+        (bird.y < pipe.topHeight || bird.y + bird.height > pipe.bottomY)
+      ) {
+        endGame();
+      }
+
+      if (pipe.x + pipe.width < 0) {
+        pipes.splice(index, 1);
+        score++;
+      }
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBird();
+    drawPipes();
+
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.fillText('Score: ' + score, 10, 30);
+
+    if (gameOver) {
+      ctx.fillStyle = 'red';
+      ctx.font = '48px Arial';
+      ctx.fillText('Game Over', canvas.width / 2 - 120, canvas.height / 2);
+      ctx.font = '24px Arial';
+      ctx.fillText('Click or press Space to restart', canvas.width / 2 - 130, canvas.height / 2 + 40);
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    if (!gameOver) {
+      requestAnimationFrame(loop);
+    }
+  }
+
+  function flap() {
+    if (!gameOver) {
+      bird.velocity = bird.lift;
+    } else {
+      initGame();
+    }
+  }
+
+  function endGame() {
+    gameOver = true;
+    saveScore(score);
+    renderLeaderboard();
+  }
+
+  window.addEventListener('click', flap);
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space') flap();
+  });
+
+  // --- Leaderboard Functions ---
+
+  function saveScore(newScore) {
+    const scores = JSON.parse(localStorage.getItem('flappyScores') || '[]');
+    scores.push(newScore);
+    scores.sort((a, b) => b - a); // Descending
+    localStorage.setItem('flappyScores', JSON.stringify(scores.slice(0, 5))); // Keep top 5
+  }
+
+  function renderLeaderboard() {
+    const scoreList = document.getElementById('scoreList');
+    const scores = JSON.parse(localStorage.getItem('flappyScores') || '[]');
+    scoreList.innerHTML = scores.map((s, i) => `<li>#${i + 1}: ${s}</li>`).join('');
+  }
+
+  renderLeaderboard(); // Show leaderboard at start
+  initGame(); // Start game
+</script>
+
+</body>
+</html>

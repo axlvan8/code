@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en" translate="yes">
+    <head>
+        <title>tyty</title>
+        <!--http://fonts.googleapis.com/css2?family=VT323&display=swap-->
+        <link 
+        id="favicon"
+        rel="icon"
+        href="file:///C:/Users/vihng/Downloads/e49a36ca-ad9c-4309-b920-456ee631d484.sketchpad (1).jpeg"
+        type="image/x-icon
+        ">
+    </head>
+    <body style="background:#daf7a3;">
+        <div id="cookie-banner-gdpr" class="cookie-banner ">
+            <p>We use cookies and similar technologies to collect data about your usage of our site. 
+              For more details, please review our  <a href="cookies.html" target="_blank">cookie policy</a></p>
+            <button onclick="acceptCookies()">Accept</button>
+            <button onclick="rejectCookies()">Reject</button>
+        </div>
+        <div id="cookie-banner-ccpa"  class="cookie-banner " >
+          <p>We use cookies. <a href="cookies.html">Learn more</a> |
+             <a href="/do-not-sell">Do Not Sell My Info</a></p>
+          <button onclick="acceptCookies()">OK</button>
+        </div>
+        <div class="topnav">
+            
+        </div>
+        <p id="msg"></p><p id="map"></p>
+        <h1 style="color: red;">tyty</h1>
+        
+
+        <style>
+            .cookie-banner {
+              position: fixed;
+              bottom: 0;
+              background: #222;
+              color: #fff;
+              width: 100%;
+              padding: 15px;
+              text-align: center;
+              z-index: 1000;
+            }
+            .cookie-banner a {
+              color: #0bf;
+            }
+            .cookie-banner button {
+              margin-left: 10px;
+              padding: 6px 12px;
+            }
+            .hidden {
+              display: none;
+            }
+            .cookie-banner{
+                position: fixed;
+                bottom: 0;
+                background: #333;
+                color: #fff;
+                width: 100%;
+                padding: 15px;
+                text-align: center;
+                z-index: 1000;
+            }
+            .cookie-banner button{
+                margin: 0 10px;
+            }
+            canvas{
+                border: 2px solid #daf7a3;
+            }
+
+            #backgroundImage{
+                border: #87ceeb;
+                height: 100%;
+                pointer-events: all;
+                position: fixed;
+                top: 0;
+                visibility: hidden;
+                width: 100%;
+            }
+            [show-background-image] #backgroundImage{
+                visibility: visible;
+            }
+            .a{
+                border-color: black;
+                border-width: 1;
+                border-style: solid;
+            }
+            .topnav{
+                overflow: hidden;
+                background-color: #333;
+            }
+            .topnav a{
+                float: left;
+                display: block;
+                color: #f2f2f2;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+            }
+            .topnav a:hover{
+                background-color:#ddd;
+                color: black;
+            }
+        </style>
+        <script src="http://example.com/tracker.js"></script>
+        <script src="cookies.js"></script>
+        <iframe id="backgroundImage" src=""></iframe>
+        <nt-app></nt-app>
+        <link rel="json" src="wert.json">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,requiresActiveX=true" />
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="author" content="Vi&Axl Nguyen" />
+        <script src="geo.js"></script>
+        <button onclick="wert();">...</button>
+        <script>
+        
+            function wert(){
+    var w = window.open();
+    w.document.open();
+    w.document.write("<h2>tyty</h2>");
+    w.document.title ="wert";
+    w.document.close();
+}
+            
+        </script>
+    
+    <script src="local.js"></script>
+    <p id="currentTime"></p>
+    <p id="didy"></p>
+    <p id="wert"></p>
+    <p id="trew"></p>
+    <script src="sod.js"></script>
+    <fieldset><legend id="leg">Enter Name</legend>
+        <input type="text" id="username">tyty
+        <button onclick="storeName();">store name</button>
+        <button onclick="recallName();">recall name</button>
+        <button onclick="removeName();">remove name</button>
+    </fieldset>            
+        
+        <ul contenteditable="true" id="list">
+            <li>1</li><li>2</li><li>3</li></ul>
+        <style>
+            canvas{
+                border: 2px solid block;
+                background-color: #87ceeb;
+            }
+            
+        </style>
+        <div id="container"></div>
+        <p id="ggg" style="font-size: 20px; color: blue;"></p>
+        <div id="container"></div>
+        <script src="http://cdn.anychart.com/releases/8.8.0/js/anychart-core.min.js"></script>
+        <script src="http://cdn.anychart.com/releases/8.8.0/js/anychart-graph.min.js"></script>
+        <script>
+            function setupAccount(){
+                const username = document.getElementById("setup-username").value;
+                const password = document.getElementById("setup-password").value;
+            
+                if(!username || !password){
+                    document.getElementById("setup-message").textContent = "Please fill out all fields.";
+                    return;
+                }
+                if(localStorage.getItem(username)){
+                    document.getElementById("setup-message").textContent = "Username already exists.";
+                    return;
+                }
+                localStorage.setItem(username, JSON.stringify({password}));
+                document.getElementById("setup-message").textContent = "account created successfuly.";
+                };
+                function login() {
+                      const username = document.getElementById('login-username').value;
+                      const password = document.getElementById('login-password').value;
+                
+                      const userData = JSON.parse(localStorage.getItem(username));
+                
+                      if (userData && userData.password === password) {
+                        localStorage.setItem('loggedInUser', username);
+                        showProtectedContent();
+                        document.getElementById("a").innerHTML = "welcome!, "+username;
+                      } else {
+                        document.getElementById('login-message').textContent = 'Invalid username or password.';
+                      }
+                    }
+                
+                    function showProtectedContent() {
+                      document.getElementById('setup-form').style.display = 'none';
+                      document.getElementById('login-form').style.display = 'none';
+                      document.getElementById('protected-content').style.display = 'block';
+                    }
+                    window.addEventListener("load", () => {
+                          const loggedInUser = localStorage.getItem('loggedInUser');
+                            if (loggedInUser) {
+                              showProtectedContent();
+                              document.getElementById("a").textContent = "Welcome back, " + loggedInUser;
+                            }
+                    })
+                    function logout() {
+                      localStorage.removeItem('loggedInUser');
+                      location.reload();
+                    }
+                
+                    // On page load, check if user is logged in
+                    window.onload = () => {
+                      const loggedInUser = localStorage.getItem('loggedInUser');
+                      if (loggedInUser) {
+                        showProtectedContent();
+                      }
+                    };
+                    function comment(){
+                        const comment = document.getElementById("comment").value;
+                        
+                        localStorage.setItem(comment);
+                        document.getElementById("sss").textContent = comment;
+                    }
+                    
+                    document.addEventListener('keydown', function(event){
+                        const key = event.key;
+                        const code = key.length === 1 ? key.charCodeAt(0) : event.keyCode;
+                        document.getElementById('ggg').textContent = `"${key}"(ASCII/code: ${code})`;
+                    })
+                      
+        </script>
+        <button onclick="fullScreenSVG(900, 700)" >
+          Fullscreen
+        </button>
+        <svg height="600" width="400" class="a" id="game" fill="white" xlmlns="http://www.w3.org/2000/svg">
+            <circle cx="200" cy="300" r="13" stroke="black" id="bird"></circle>
+            <rect id="pipeTop" x="350" y="0" width="60" height="150" fill="black"></rect>
+            <rect id="pipeBottom" x="350" y="300" width="60" height="300" fill="black"></rect>
+        </svg>
+         <button height="300" width="200" onclick="oioioi()"><img src="file:///C:/Users/vihng/Downloads/Drawing-1.sketchpad.jpeg" height="300" width="200"></button>
+        <p id="score">Score: </p>
+        <script>
+            function fullscreenSVG(newWidth, newHeight) {
+                 
+                    svg.setAttribute('width', newWidth);
+                    svg.setAttribute('height', newHeight);
+                      }
+ const bird = document.getElementById("bird");
+  const pipeTop = document.getElementById("pipeTop");
+  const pipeBottom = document.getElementById("pipeBottom");
+  let score = 0;
+  let y = 300;       // Bird's Y position
+  let vy = 0;        // Bird's vertical speed
+  const gravity = 0.5;
+  const jumpPower = -8;
+
+  let pipeX = 400;   // Initial pipe position
+  const pipeSpeed = 2;
+  const pipeWidth = 60;
+  const pipeGap = 150;
+
+  let gameRunning = true;
+
+  function jump() {
+    vy = jumpPower;
+  }
+
+  function resetPipes() {
+    pipeX = 400;
+    const topHeight = Math.random() * 250 + 50;
+    const bottomY = topHeight + pipeGap;
+
+    pipeTop.setAttribute("height", topHeight);
+    pipeBottom.setAttribute("y", bottomY);
+    pipeBottom.setAttribute("height", 600 - bottomY);
+  }
+
+  function checkCollision() {
+    const birdX = parseFloat(bird.getAttribute("cx"));
+    const birdR = parseFloat(bird.getAttribute("r"));
+    const topHeight = parseFloat(pipeTop.getAttribute("height"));
+    const bottomY = parseFloat(pipeBottom.getAttribute("y"));
+
+    // Collision if bird is within pipe's x range and hits top or bottom pipe
+    if (
+      pipeX < birdX + birdR &&
+      pipeX + pipeWidth > birdX - birdR &&
+      (y - birdR < topHeight || y + birdR > bottomY)
+    ) {
+      gameRunning = false;
+      
+      location.reload(); // Restart game
+    }
+    
+  }
+
+  function animate() {
+
+    if (!gameRunning) return;
+
+    vy += gravity;
+    y += vy;
+
+    // Keep bird within canvas
+    if (y > 600 - 13) {
+      y = 600 - 13;
+      vy = 0;
+    }
+    if (y < 13) {
+      y = 13;
+      vy = 0;
+    }
+
+    // Move pipes
+    pipeX -= pipeSpeed;
+
+    if (pipeX + pipeWidth < 0) {
+      resetPipes();
+    }
+
+    // Update positions
+    bird.setAttribute("cy", y);
+    pipeTop.setAttribute("x", pipeX);
+    pipeBottom.setAttribute("x", pipeX);
+
+    checkCollision();
+
+    requestAnimationFrame(animate);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      jump();
+    }
+  });
+
+  // Initialize pipes once
+  resetPipes();
+           let frcl = true;
+           window.addEventListener("keydown", (e) => {
+             if (e.code === "Space") {
+               if(frcl){
+                animate();
+                frcl = false;
+               }else{
+                jump();
+               }
+
+             }
+           });
+           function oioioi(){
+            if(frcl){
+                animate();
+                frcl = false;
+               }else{
+                jump();
+               }
+           }
+           const iframe = document.getElementById("game");
+           const doc = iframe.contentDocument || iframe.contentWindow.document;
+            function changeIframeSource(url){
+                document.getElementById("gameb").src = url;
+            }
+            
+        </script>
+        <canvas id="canvy"></canvas>
+        <div id="setup-form">
+            <input type="text" id="setup-username" placeholder="username"><br>
+            <input type="password" id="setup-password" placeholder="password"><br>
+            <button onclick="setupAccount()">Create</button>
+            <p id="setup-message" style="color:red;"></p>
+
+        </div>
+        <div id="login-form">
+            <input type="text" id="login-username" placeholder="username"><br>
+            <input type="password" id="login-password" placeholder="password"><br>
+            <button onclick="login()">Login</button>
+            <p id="login-message"></p>
+        </div>
+        <div id="protected-content" style="display:none">
+            <h2 id="a"></h2>
+            
+            <div class="topnav">
+                <button onclick="changeIframeSource('file:///C:/Users/vihng/test2.html')">
+                    <img src="file:///C:/Users/vihng/Downloads/Drawing-2.sketchpad (1).png" height="50" width="50">
+                </button>
+                <button onclick="changeIframeSource('file:///C:/Users/vihng/editor.html')">
+                    <h3>Create<br>+</h3>
+                </button>
+                <ul id="projectList"></ul>
+            </div>
+            
+             <iframe height="600" width="400" src="" id="gameb" style="border:1px solid black;">
+                
+             </iframe>
+
+        
+
+       
+        
+            <script>
+                
+            </script>
+            <p id="sss"></p>
+            <script src="http://code.jquery.com/jquery-2.1.0.js"></script>
+            <script src="editor.html" type="html"></script>
+            <div id="game1" style="display:none;">
+                <input type="number" id="guess" placeholder="number" />
+                <button onclick="checkGuess()">submit</button>
+                <p id="result"></p>
+            </div>
+
+            <button onclick="logout()">Logout</button>
+            <img src="">
+        </div>
+        
+        <div id="setup-form" style="display:none;">
+            <input type="text" id="username" placeholder="Choose a username" ><br>
+            <input type="password" id="password" placeholder="Choose a password" required /><br>
+            <p id="message" style="color:red;"></p>
+        </div>
+        <h1 id="hf"></h1>
+        <h2 id="hr"></h2>
+        <script>
+            function getRandomInt(min,max){
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+            function ooo(){
+                let random = getRandomInt(1, 600);
+                document.getElementById("hf").textContent = random;
+            }
+            ooo();
+            
+            
+                
+
+                    function bb(s, x){
+                        var aa = (s / x) * new Date.now();
+                        var ab = ((aa * x) / (s * x)) / (Date.now() * getRandomInt(1, z(new Date(), Math.random())));
+                        document.getElementById("hr").textContent = ab;
+                        if(ab > 50 && ab < 500){
+                            localStorage.setItem(bd, JSON.stringify(ab))
+                        }
+                    }
+                    function ba(d, f){
+                        var aa = localStorage.getItem(bd);
+                    }
+                    
+                
+            
+        </script>
+       
+    </body>
+</html>
