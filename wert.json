@@ -1,0 +1,16 @@
+{
+    "name": "Wert",
+    "short_name": "wert",
+    "thme_color": "#fc2803",
+    "background_color": "#fce803",
+    "display": "minimal-ui",
+    "start_url": "./?utm_source=web_app_manifest",
+    "scope": ".",
+    "icons": [
+        {
+            "src": "smile.jpg",
+            "sizes": "192x192",
+            "type": "image/jpg"
+        }
+    ]
+}
