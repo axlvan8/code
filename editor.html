@@ -157,23 +157,48 @@
             }
             localStorage.setItem("project_"+ name, code);
            }
-           function loadProjects(){
-               const list = document.getElementById("projectList");
-               list.innerHTML = '';
-               for(let i = 0; i < localStorage.length; i++){
-                   const key = localStorage.key(i);
-                   if(key.startsWith("project_")){
-                       const li = document.createElement("li");
-                       li.textContent = key.replace("project_", "");
-                       li.onclick = () => {
-                           document.getElementById("pn").value = li.textContent;
-                           document.getElementById("tc").value = localStorage.getItem(key);
-                       };
-                       list.appendChild(li);
-                   }
+            function loadProjects() {
+                const list = document.getElementById("projectList");
+                 list.innerHTML = '';
+                 for (let i = 0; i < localStorage.length; i++) {
+                 const key = localStorage.key(i);
+                if (key.startsWith("project_")) {
+                   const projectName = key.replace("project_", "");
+     
+                    const li = document.createElement("li");
+                   li.style.display = "flex";
+                     li.style.justifyContent = "space-between";
+                     li.style.alignItems = "center";
+     
+                     const span = document.createElement("span");
+                    span.textContent = projectName;
+                    span.style.cursor = "pointer";
+                     span.onclick = () => {
+                       document.getElementById("pn").value = projectName;
+                       document.getElementById("tc").value = localStorage.getItem(key);
+                     };
+     
+                    const delBtn = document.createElement("button");
+                   delBtn.textContent = "🗑️";
+                   delBtn.title = "Delete project";
+                   delBtn.style.marginLeft = "10px";
+                    delBtn.style.background = "none";
+                   delBtn.style.border = "none";
+                    delBtn.style.cursor = "pointer";
+                  delBtn.style.color = "red";
+                   delBtn.onclick = (e) => {
+                     e.stopPropagation();
+                       deleteProject(projectName);
+                  };
+
+                    li.appendChild(span);
+                  li.appendChild(delBtn);
+                  list.appendChild(li);
+                 }
                }
-           }
-           loadProjects();
+               }
+     
+              loadProjects();
         </script>
         
         <div class="default">
