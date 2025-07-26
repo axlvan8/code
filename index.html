@@ -2,7 +2,7 @@
 <html lang="en" translate="yes">
     <head>
         <title>tyty</title>
-        <!--http://fonts.googleapis.com/css2?family=VT323&display=swap-->
+        
         <link 
         id="favicon"
         rel="icon"
@@ -330,18 +330,8 @@
 
   // Initialize pipes once
   resetPipes();
-           let frcl = true;
-           window.addEventListener("keydown", (e) => {
-             if (e.code === "Space") {
-               if(frcl){
-                animate();
-                frcl = false;
-               }else{
-                jump();
-               }
-
-             }
-           });
+           
+           
            function oioioi(){
             if(frcl){
                 animate();
@@ -378,6 +368,9 @@
                 <button onclick="changeIframeSource('test2.html')">
                     flappybird
                 </button>
+                <button onclick="changeIframeSource('test3.html')">
+                  canabalt
+                </button>    
                 <button onclick="changeIframeSource('editor.html')">
                     <h3>Create<br>+</h3>
                 </button>
