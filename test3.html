@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Canabalt</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+            background-color: #e0f7fa;
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="640"
+ height="480"></canvas>
+<script>
+window.onload = function(){
+    
+    
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext('2d');
+    const floorHeight = 40;
+   
+    let score = 0;
+    if(!ctx){
+        throw new Error("ctx is not defined");
+        return;
+    }
+    function drawScore(){
+        ctx.fillStyle = "black";
+        ctx.font = "20px Arial";
+        ctx.fillText("Score: " + Math.floor(score), 10, 30);
+    }
+    function Floor(x, y, width, height){
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    const player = {
+        x: 100,
+        width: 30,
+        height: 30,
+        y: 0,
+        vy: 0,
+        isOnGround: false,
+        jumpCount: 0
+
+    };
+
+    const game = {
+        height: 480,
+        width: 640,
+        gravity: 1,
+        jumpForce: -15,
+        scrollSpeed: 4,
+        floorTiles: []
+    };
+
+   const floorY = game.height - floorHeight;
+
+    for (let i = 0; i < 3; i++) {
+        game.floorTiles.push(new Floor(i * 300, floorY, 300, floorHeight));
+    }
+
+    function drawFloor(){
+        ctx.fillStyle = "gray";
+        for (const floor of game.floorTiles) {
+            ctx.fillRect(floor.x, floor.y, floor.width, floor.height);
+        }
+    }
+
+    function drawPlayer(){
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function updatePlayer(){
+        player.vy += game.gravity;
+        player.y += player.vy;
+
+        player.isOnGround = false;
+
+        for (const floor of game.floorTiles) {
+            if (
+                player.y + player.height >= floor.y &&
+                player.y + player.height <= floor.y + floor.height &&
+                player.x + player.width > floor.x &&
+                player.x < floor.x + floor.width
+            ) {
+                player.y = floor.y - player.height;
+                player.vy = 0;
+                player.isOnGround = true;
+                player.jumpCount = 0;
+                break;
+            }
+             if(player.y > game.height){
+        window.location.reload();
+    }
+        }
+    }
+
+    function updateFloor(){
+        for (const floor of game.floorTiles) {
+            floor.x -= game.scrollSpeed;
+        }
+
+        if (game.floorTiles[0].x + game.floorTiles[0].width < 0) {
+            game.floorTiles.shift(); 
+        }
+
+        
+        const last = game.floorTiles[game.floorTiles.length - 1];
+        if (last.x + last.width < game.width) {
+            const gap = Math.random() < 0.3 ? 60 + Math.random() * 40: 0; 
+            const newX = last.x + last.width + gap;
+            const newWidth = 200 + Math.random() * 150;
+            game.floorTiles.push(new Floor(newX, floorY, newWidth, floorHeight));
+        }
+    }
+
+    function draw(){
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawFloor();
+        drawPlayer();
+        drawScore();
+        score += 0.1;
+        
+    }
+
+    function gameloop(){
+        updateFloor();
+        updatePlayer();
+        draw();
+        requestAnimationFrame(gameloop);
+    }
+    
+    window.addEventListener("keydown", function(e) {
+        if ((e.code === "Space" || e.key === " ") && player.jumpCount < 2) {
+            player.vy = game.jumpForce;
+            player.jumpCount++;
+
+        }
+
+        
+    });
+    window.addEventListener("click", function(){
+        if(player.jumpCount < 2){
+            player.vy = game.jumpForce;
+            player.jumpCount++;
+        }
+    })
+    
+    player.y = game.floorTiles[0].y - player.height;
+   
+    gameloop();
+};
+</script>
+</body>
+</html>
