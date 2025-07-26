@@ -13,51 +13,59 @@
     </style>
 </head>
 <body>
-<canvas id="canvas" width="640"
- height="480"></canvas>
-<script>
-window.onload = function(){
+   <div style="text-align: center; margin-top: 10px;">
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard"></ul>
+</div>
+    <canvas id="canvas" width="640"
+     height="480"> </canvas>
+     <br>
     
-    
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext('2d');
-    const floorHeight = 40;
-   
-    let score = 0;
-    if(!ctx){
-        throw new Error("ctx is not defined");
-        return;
+    <script>
+        
+    window.onload = function(){
+        
+        
+       const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext('2d');
+      const floorHeight = 40;
+        
+      let score = 0;
+      if(!ctx){
+          throw new Error("ctx is not defined");
+         return;
+     }
+      function drawScore(){
+           ctx.fillStyle = "black";
+           ctx.font = "20px Arial";
+          ctx.fillText("Score: " + Math.floor(score), 10, 30);
     }
-    function drawScore(){
-        ctx.fillStyle = "black";
-        ctx.font = "20px Arial";
-        ctx.fillText("Score: " + Math.floor(score), 10, 30);
-    }
-    function Floor(x, y, width, height){
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-    }
+      function Floor(x, y, width, height){
+          this.x = x;
+         this.y = y;
+          this.width = width;
+         this.height = height;
+      }
 
-    const player = {
-        x: 100,
-        width: 30,
-        height: 30,
-        y: 0,
-        vy: 0,
-        isOnGround: false,
-        jumpCount: 0
+      const player = {
+         x: 100,
+            width: 30,
+            height: 30,
+            y: 0,
+            vy: 0,
+          isOnGround: false,
+           jumpCount: 0
 
-    };
+     };
 
-    const game = {
-        height: 480,
-        width: 640,
-        gravity: 1,
-        jumpForce: -15,
-        scrollSpeed: 4,
-        floorTiles: []
+      const game = {
+           height: 480,
+           width: 640,
+            gravity: 1,
+           jumpForce: -15,
+          scrollSpeed: 4,
+          floorTiles: [],
+        isgameover: false
     };
 
    const floorY = game.height - floorHeight;
@@ -95,11 +103,16 @@ window.onload = function(){
                 player.vy = 0;
                 player.isOnGround = true;
                 player.jumpCount = 0;
-                break;
+                return;
             }
-             if(player.y > game.height){
-        window.location.reload();
+            
     }
+         if(!game.isgameover && player.y > game.height){
+            game.isgameover = true;
+            saveScore(Math.floor(score));
+            renderLeaderboard();
+            gameover();
+                
         }
     }
 
@@ -132,8 +145,10 @@ window.onload = function(){
     }
 
     function gameloop(){
-        updateFloor();
-        updatePlayer();
+        if(!game.isgameover){
+            updateFloor();
+            updatePlayer();
+        }
         draw();
         requestAnimationFrame(gameloop);
     }
@@ -155,7 +170,49 @@ window.onload = function(){
     })
     
     player.y = game.floorTiles[0].y - player.height;
-   
+
+function saveScore(name, currentScore) {
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+    leaderboard.push({ name, score: currentScore });
+
+    
+    leaderboard.sort((a, b) => b.score - a.score);
+
+    
+    leaderboard = leaderboard.slice(0, 5);
+
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+}
+
+  function renderLeaderboard() {
+    const leaderboardList = document.getElementById("leaderboard");
+    const leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    
+    leaderboardList.innerHTML = leaderboard
+        .map((entry, index) => `<li>#${index + 1}: ${entry.name} – ${entry.score}</li>`)
+        .join("");
+}
+function gameover() {
+    const name = prompt("name: ");
+    const final = Math.floor(score);
+    saveScore(name || "Anonymous", final);
+    renderLeaderboard()
+    const msg = document.createElement("h3");
+    msg.textContent = `Game over, ${name || "you"} scored ${final}`;
+    msg.style.textAlign = "center";
+    document.body.appendChild(msg);
+
+    const button = document.createElement("button");
+    button.textContent = "Play Again";
+    button.style.display = "block";
+    button.style.margin = "20px auto";
+    button.style.fontSize = "20px";
+    button.onclick = () => window.location.reload();
+    document.body.appendChild(button);
+}
+
+    renderLeaderboard();
     gameloop();
 };
 </script>
