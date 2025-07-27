@@ -231,9 +231,10 @@
             <rect id="pipeTop" x="350" y="0" width="60" height="150" fill="black"></rect>
             <rect id="pipeBottom" x="350" y="300" width="60" height="300" fill="black"></rect>
         </svg>
-         <button height="300" width="200" onclick="oioioi()">JUMP</button>
+         <button height="300" width="200" onclick="let a = true;if(a){animate()}else{jump()}">JUMP</button>
         <p id="score">Score: </p>
         <script>
+          try{
             function fullscreenSVG(newWidth, newHeight) {
                  
                     svg.setAttribute('width', newWidth);
@@ -248,7 +249,7 @@
   const gravity = 0.5;
   const jumpPower = -8;
 
-  let pipeX = 400;   // Initial pipe position
+  let pipeX = 400;   
   const pipeSpeed = 2;
   const pipeWidth = 60;
   const pipeGap = 150;
@@ -334,7 +335,7 @@
            
            function oioioi(){
             if(frcl){
-                animate();
+                
                 frcl = false;
                }else{
                 jump();
@@ -345,7 +346,9 @@
             function changeIframeSource(url){
                 document.getElementById("gameb").src = url;
             }
-            
+          }catch(e){
+            throw new Error(e);
+          }
         </script>
         <canvas id="canvy"></canvas>
         <div id="setup-form">
@@ -410,6 +413,7 @@
         <h1 id="hf"></h1>
         <h2 id="hr"></h2>
         <script>
+          try{
             function getRandomInt(min,max){
                 return Math.floor(Math.random() * (max - min + 1)) + min;
             }
@@ -433,7 +437,9 @@
                     function ba(d, f){
                         var aa = localStorage.getItem(bd);
                     }
-                    
+                  }catch(e){
+                    throw new Error(e);
+                  }
                 
             
         </script>
