@@ -38,7 +38,7 @@
         isOnGround: false,
         C: 0
       };
-
+    
       const game = {
         gravity: 1,
         jumpForce: -15,
@@ -67,7 +67,7 @@
         ctx.font = "20px Arial";
         ctx.fillText("Score: " + Math.floor(score), 10, 30);
       }
-
+      
       function drawPlayer() {
         ctx.fillStyle = "yellow";
         ctx.fillRect(player.x, player.y, player.width, player.height);

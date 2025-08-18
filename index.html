@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" translate="yes">
+  <!--index-->
     <head>
         <title>tyty</title>
         
@@ -104,7 +105,7 @@
                 color: black;
             }
         </style>
-        <script src="http://example.com/tracker.js"></script>
+        
         <script src="cookies.js"></script>
         <iframe id="backgroundImage" src=""></iframe>
         <nt-app></nt-app>
@@ -152,8 +153,7 @@
         <div id="container"></div>
         <p id="ggg" style="font-size: 20px; color: blue;"></p>
         <div id="container"></div>
-        <script src="http://cdn.anychart.com/releases/8.8.0/js/anychart-core.min.js"></script>
-        <script src="http://cdn.anychart.com/releases/8.8.0/js/anychart-graph.min.js"></script>
+        
         <script>
             function setupAccount(){
                 const username = document.getElementById("setup-username").value;
@@ -202,7 +202,7 @@
                       location.reload();
                     }
                 
-                    // On page load, check if user is logged in
+                    
                     window.onload = () => {
                       const loggedInUser = localStorage.getItem('loggedInUser');
                       if (loggedInUser) {
@@ -234,12 +234,13 @@
          <button height="300" width="200" onclick="let a = true;if(a){animate()}else{jump()}">JUMP</button>
         <p id="score">Score: </p>
         <script>
-          try{
+          
+          
             function fullscreenSVG(newWidth, newHeight) {
                  
                     svg.setAttribute('width', newWidth);
                     svg.setAttribute('height', newHeight);
-                      }
+          }
  const bird = document.getElementById("bird");
   const pipeTop = document.getElementById("pipeTop");
   const pipeBottom = document.getElementById("pipeBottom");
@@ -346,9 +347,9 @@
             function changeIframeSource(url){
                 document.getElementById("gameb").src = url;
             }
-          }catch(e){
-            throw new Error(e);
-          }
+          
+            throw new Error(iframe);
+          
         </script>
         <canvas id="canvy"></canvas>
         <div id="setup-form">
@@ -376,6 +377,9 @@
                 </button>    
                 <button onclick="changeIframeSource('editor.html')">
                     <h3>Create<br>+</h3>
+                </button>
+                <button onclick="changeIframeSource('p.html')">
+                    paperclicker
                 </button>
                 <ul id="projectList"></ul>
             </div>
