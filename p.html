@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html translate="yes">
+    <!--p.html-->
+    <head>
+        <title>paper clicker</title>
+        <meta charset="UTF-8">
+        <style>
+            body {
+                background-color: #333;
+                color: aliceblue;
+            }
+            #a {
+                text-align: right;
+            }
+            .a{
+                margin: 80%;
+                text-align: left;
+            }
+            #b{
+                text-align: right;
+                color: aliceblue;
+            }
+            #b button{
+                text-align: center;
+                background-color: black;
+                color: aliceblue;
+                height: 70;
+                width: 70;
+            }
+        </style>
+    </head>
+    <body>
+        <p>████</p>
+        <h2 id="a">$0</h2>
+        <button onclick="a(k)"><img src="file:///C:/Users/vihng/Downloads/Drawing-4.sketchpad.jpeg" height="300" width="200"></button>
+        <div id="b">
+            <button onclick="b(p, 1)">Auto-Clicker:<p id="h">0</p><p id="f">$10</p></button>
+            <button id="g" onclick="b(20, 4)">red cursor<br><br><br><br>$20</button>
+            <button onclick="b(100, 2)">Printer:<p id="as">0</p>$100</button>
+            <button onclick="b(10000, 3)">Paper-Factory:<p id="p">0</p>$10000</Paper-Factory></button>
+        </div>
+        <script>
+            var k = 1;
+            var i = 0;
+            var o = 0;
+            var y = 0;
+            var p = 10;
+            var h = 0;
+            var paper = 0;
+            function a(a){
+                paper += a;
+                c();
+            }
+            function c(){
+                document.getElementById("a").innerText = "$" + paper.toLocaleString();
+            }
+            function b(a, b){
+                
+                
+                if(paper >= a){
+                    paper -= a;
+                    c()
+                    if(b === 1){
+                        p++;
+                        h ++;
+                        y++;
+                        document.getElementById("h").innerText = y.toLocaleString();
+                        document.getElementById('f').innerText = '$' + p.toLocaleString()
+                    }
+                    if(b===2){
+                        o++;
+                        h+=100;
+                        document.getElementById("as").innerText = o.toLocaleString();
+                    }
+                    if(b===3){
+                        i++
+                        h+=1000
+                        document.getElementById("p").innerText = i.toLocaleString();
+                    }
+                    if(b===4){
+                        document.getElementById("g").style.display = "none";
+                        k += 5;
+                    }
+                }else{
+                    throw new Error("Not enough paper")
+                }
+            }
+            setInterval(function(){
+                paper += h;
+                c();
+            }, 1000)
+            window.onerror = function(msg, src, line, col , err){
+                alert(msg)
+            }
+        </script>
+    </body>
+</html>
