@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>no name</title>
+        <meta charset="UTF-8">
+        <style>
+            #a{
+                background-color: grey;
+                display: none;
+            }
+            #wall{
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <p id="h">Choose a side:</p>
+        <button onclick="d('white')" id="f">white</button>
+        <button onclick="d('black')" id="g">black</button>
+        <svg height="800" width="800" id="a">
+            <circle cx="750" cy="750" id="b" r="20" fill="white"></circle>
+            <circle cx="50" cy="50" id="c" r="20" fill="black"></circle>
+            <rect id="wall1" x="200" y="200" width="100" height="20" fill="brown" />
+            <rect id="wall2" x="400" y="300" width="20" height="100" fill="brown" />
+
+        </svg>
+        <button id="wall" onclick="buildWall()"><img src="Drawing-6.sketchpad.jpeg" height="100" width="100"></button>
+        <script>
+            let facing = "d";
+
+            const game = document.getElementById("a");
+            const b = document.getElementById("b");
+            const c = document.getElementById("c");
+            var a;
+            
+            function d(e){
+                a = e;
+                game.style.display = "block";
+                document.getElementById("f").style.display = "none"
+                document.getElementById("g").style.display = "none"
+                document.getElementById("h").style.display = "none"
+                document.getElementById("wall").style.display = "block"
+                alert("Use w a s d to move, arrows to throw, and click the wall button to build")
+            }
+            document.addEventListener("keydown", function (event) {
+                if (!a) return;
+
+                const player = a === "white" ? b : c;
+                const opponent = a === "white" ? c : b;
+
+                let cx = parseInt(player.getAttribute("cx"));
+                let cy = parseInt(player.getAttribute("cy"));
+
+
+                const opponentCx = parseInt(opponent.getAttribute("cx"));
+                const opponentCy = parseInt(opponent.getAttribute("cy"));
+
+                const step = 10;
+                const radius = parseInt(player.getAttribute("r"));
+                const opponentRadius = parseInt(opponent.getAttribute("r"));
+
+                let newCx = cx;
+                let newCy = cy;
+
+    
+                switch (event.key) {
+                    case "w":
+                    newCy -= step;
+                    facing = "w";
+                    break;
+                case "a":
+                    newCx -= step;
+                    facing = "a";
+                    break;
+                case "s":
+                    newCy += step;
+                    facing = "s";
+                        break;
+                case "d":
+                    newCx += step;
+                    facing = "d";
+                    break;
+                default:
+                    return;
+            }
+
+                const dx = newCx - opponentCx;
+                const dy = newCy - opponentCy;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                const minDistance = radius + opponentRadius;
+
+                if (distance < minDistance) {
+                    return;
+                }
+                if(i(newCx, newCy, radius)){
+                    return;
+                }
+                player.setAttribute("cx", newCx);
+                player.setAttribute("cy", newCy);
+            });
+            function i(newCx, newCy, radius) {
+                const walls = document.querySelectorAll("rect");
+
+                for (const wall of walls) {
+                    const wx = parseFloat(wall.getAttribute("x"));
+                    const wy = parseFloat(wall.getAttribute("y"));
+                    const ww = parseFloat(wall.getAttribute("width"));
+                    const wh = parseFloat(wall.getAttribute("height"));
+
+    
+                    const closestX = Math.max(wx, Math.min(newCx, wx + ww));
+                    const closestY = Math.max(wy, Math.min(newCy, wy + wh));
+
+                    const dx = newCx - closestX;
+                    const dy = newCy - closestY;    
+
+                    if ((dx * dx + dy * dy) < (radius * radius)) {
+                        return true;
+                    }
+                }
+
+                return false; 
+            }
+            function buildWall() {
+                if (!a) return;
+
+                const svg = document.getElementById("a");
+                const player = a === "white" ? b : c;
+
+                const cx = parseInt(player.getAttribute("cx"));
+                const cy = parseInt(player.getAttribute("cy"));
+                const radius = parseInt(player.getAttribute("r"));
+
+    
+                let wallX = cx;
+                let wallY = cy;
+                const wallWidth = 40;
+                const wallHeight = 10;
+
+                switch (facing) {
+                    case "w":
+                        wallX = cx - wallWidth / 2;
+                        wallY = cy - radius - wallHeight - 2;
+            break;
+        case "s":
+            wallX = cx - wallWidth / 2;
+            wallY = cy + radius + 2;
+            break;
+        case "a":
+            wallX = cx - radius - wallHeight - 2;
+            wallY = cy - wallWidth / 2;
+            break;
+        case "d":
+            wallX = cx + radius + 2;
+            wallY = cy - wallWidth / 2;
+            break;
+    }
+
+    const wall = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+
+    if (facing === "w" || facing === "s") {
+        wall.setAttribute("width", wallWidth);
+        wall.setAttribute("height", wallHeight);
+    } else {
+        wall.setAttribute("width", wallHeight);
+        wall.setAttribute("height", wallWidth);
+    }
+
+    wall.setAttribute("x", wallX);
+    wall.setAttribute("y", wallY);
+    wall.setAttribute("fill", "brown");
+    svg.appendChild(wall);
+}
+
+
+
+        </script>
+    </body>
+</html>
