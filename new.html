@@ -34,6 +34,10 @@
         <p id="w"></p>
         <button id="wall" onclick="buildWall()"><img src="Drawing-6.sketchpad.jpeg" height="100" width="100"></button>
         <script>
+            let t = 0;
+            let opponentCanShoot = true;
+            const opponentShootCooldown = 500; 
+
             let opponentAlive = true;
 
             function updateHPDisplay() {
@@ -53,7 +57,32 @@
             const b = document.getElementById("b");
             const c = document.getElementById("c");
             var a;
-            
+            function hasLineOfSight(x1, y1, x2, y2) {
+    const walls = document.querySelectorAll("rect");
+    const samples = 20;
+
+    for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        const x = x1 + (x2 - x1) * t;
+        const y = y1 + (y2 - y1) * t;
+
+        for (const wall of walls) {
+            if (!wall.id.startsWith("wall")) continue;
+
+            const wx = parseFloat(wall.getAttribute("x"));
+            const wy = parseFloat(wall.getAttribute("y"));
+            const ww = parseFloat(wall.getAttribute("width"));
+            const wh = parseFloat(wall.getAttribute("height"));
+
+            if (x >= wx && x <= wx + ww && y >= wy && y <= wy + wh) {
+                return false; // LOS blocked
+            }
+        }
+    }
+
+    return true; // LOS clear
+}
+
             function d(e){
                 a = e;
                 game.style.display = "block";
@@ -331,64 +360,107 @@ function startOpponentAI() {
         const playerCy = parseInt(player.getAttribute("cy"));
         const opponentCx = parseInt(opponent.getAttribute("cx"));
         const opponentCy = parseInt(opponent.getAttribute("cy"));
-        const step = 10;
         const radius = parseInt(opponent.getAttribute("r"));
+        const step = 10;
 
-        let dx = playerCx - opponentCx;
-        let dy = playerCy - opponentCy;
-
-        // Don't move if already close enough
+        // Distance
+        const dx = playerCx - opponentCx;
+        const dy = playerCy - opponentCy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < radius * 2) {
-            console.log("Opponent reached player");
-            
-            playerHP--;
-updateHPDisplay();
-if (playerHP <= 0) {
-    playerAlive = false;
-}
 
-            if (dist < radius * 2) {
-    if (!opponentAttackCooldown) {
-        playerHP--;
-        updateHPDisplay();
-        opponentAttackCooldown = true;
-        setTimeout(() => opponentAttackCooldown = false, 1000); // 1 sec cooldown
-    }
-    return;
-}
-
-            return;
+        // Line of sight shooting
+        if (hasLineOfSight(opponentCx, opponentCy, playerCx, playerCy) && dist > 40) {
+            if (opponentCanShoot) {
+                shootOpponentProjectile(opponentCx, opponentCy, dx, dy);
+                opponentCanShoot = false;
+                setTimeout(() => opponentCanShoot = true, opponentShootCooldown);
+            }
         }
 
-        // Normalize movement to one direction (x or y)
-        let moveX = 0;
-        let moveY = 0;
+        // Move toward player if not adjacent
+        if (dist > radius * 2) {
+            let moveX = 0;
+            let moveY = 0;
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-            moveX = dx > 0 ? step : -step;
-        } else {
-            moveY = dy > 0 ? step : -step;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                moveX = dx > 0 ? step : -step;
+            } else {
+                moveY = dy > 0 ? step : -step;
+            }
+
+            const newCx = opponentCx + moveX;
+            const newCy = opponentCy + moveY;
+
+            if (!isCollidingWithWall(newCx, newCy, radius)) {
+                opponent.setAttribute("cx", newCx);
+                opponent.setAttribute("cy", newCy);
+            }
         }
-
-        const newCx = opponentCx + moveX;
-        const newCy = opponentCy + moveY;
-
-        // Wall collision
-        if (i(newCx, newCy, radius)) {
-            console.log("Opponent blocked by wall");
-            return;
-        }
-
-        // Move
-        opponent.setAttribute("cx", newCx);
-        opponent.setAttribute("cy", newCy);
-        console.log(`Opponent moved to ${newCx}, ${newCy}`);
     }, interval);
 }
+
 if(playerHP <= 0){
+    
     playerAlive = false;
     alert("Game over! You lost.")
+    t += 1;
+
+}
+function shootOpponentProjectile(ox, oy, dx, dy) {
+    const svg = document.getElementById("a");
+
+    const projectile = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    projectile.setAttribute("cx", ox);
+    projectile.setAttribute("cy", oy);
+    projectile.setAttribute("r", 5);
+    projectile.setAttribute("fill", "purple");
+    svg.appendChild(projectile);
+
+    const magnitude = Math.sqrt(dx * dx + dy * dy);
+    const speed = 4;
+    const vx = (dx / magnitude) * speed;
+    const vy = (dy / magnitude) * speed;
+
+    function move() {
+        let x = parseFloat(projectile.getAttribute("cx"));
+        let y = parseFloat(projectile.getAttribute("cy"));
+
+        x += vx;
+        y += vy;
+
+        projectile.setAttribute("cx", x);
+        projectile.setAttribute("cy", y);
+
+        // Out of bounds
+        if (x < 0 || x > 800 || y < 0 || y > 800) {
+            svg.removeChild(projectile);
+            return;
+        }
+
+        // Hit player
+        const player = a === "white" ? b : c;
+        const px = parseFloat(player.getAttribute("cx"));
+        const py = parseFloat(player.getAttribute("cy"));
+        const pr = parseFloat(player.getAttribute("r"));
+
+        const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+        if (dist < pr + 5) {
+            playerHP--;
+            updateHPDisplay();
+            svg.removeChild(projectile);
+
+            if (playerHP <= 0) {
+                playerAlive = false;
+                alert("Game over! You lost.");
+            }
+
+            return;
+        }
+
+        requestAnimationFrame(move);
+    }
+
+    move();
 }
 
 
