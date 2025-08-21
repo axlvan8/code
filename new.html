@@ -34,11 +34,18 @@
         <p id="w"></p>
         <button id="wall" onclick="buildWall()"><img src="Drawing-6.sketchpad.jpeg" height="100" width="100"></button>
         <script>
-            let t = 0;
-            let opponentCanShoot = true;
-            const opponentShootCooldown = 500; 
-
             let opponentAlive = true;
+let playerAlive = true;
+
+let opponentCanDodge = true;
+const dodgeCooldown = 2000;
+const dodgeChance = 0.3;
+
+            let t = true;
+            let opponentCanShoot = true;
+        
+
+            
 
             function updateHPDisplay() {
                 document.getElementById("playerHP").textContent = `Your HP: ${playerHP}`;
@@ -93,7 +100,7 @@
                 alert("Use w a s d to move, arrows to throw, and click the wall button to build")
                 startOpponentAI();
             }
-            let playerAlive = true;
+            
         document.addEventListener("keydown", function (event) {
     if (!a || !playerAlive) return;
 
@@ -185,74 +192,66 @@ function i(newCx, newCy, radius) {
             }
         }
     }
-
     return false;
 }
-
-            function buildWall() {
-                if (!a) return;
-
-                const svg = document.getElementById("a");
-                const player = a === "white" ? b : c;
-
-                const cx = parseInt(player.getAttribute("cx"));
-                const cy = parseInt(player.getAttribute("cy"));
-                const radius = parseInt(player.getAttribute("r"));
-
-    
-                let wallX = cx;
-                let wallY = cy;
-                const wallWidth = 40;
-                const wallHeight = 10;
-
-                switch (facing) {
-                    case "w":
-                        wallX = cx - wallWidth / 2;
-                        wallY = cy - radius - wallHeight - 2;
-                        break;
-                    case "s":
-                        wallX = cx - wallWidth / 2;
-                        wallY = cy + radius + 2;
-                        break;
-                    case "a":
-                        wallX = cx - radius - wallHeight - 2;
-                        wallY = cy - wallWidth / 2;
-                        break;
-                    case "d":
-                        wallX = cx + radius + 2;
-                        wallY = cy - wallWidth / 2;
-                        break;
-                }
-
-                const wall = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-
-                if (facing === "w" || facing === "s") {
-                    wall.setAttribute("width", wallWidth);
-                    wall.setAttribute("height", wallHeight);
-                } else {
-                    wall.setAttribute("width", wallHeight);
-                    wall.setAttribute("height", wallWidth);
-                }
-
-                wall.setAttribute("x", wallX);
-                wall.setAttribute("y", wallY);
-                wall.setAttribute("fill", player);
-                svg.appendChild(wall);
-            }
-     function shootProjectile(direction) {
-    if (!canShoot) return;
-    canShoot = false;
-
-    setTimeout(() => {
-        canShoot = true;
-    }, shootCooldown);
+          function buildWall() {
+    if (!a) return;
 
     const svg = document.getElementById("a");
     const player = a === "white" ? b : c;
 
     const cx = parseInt(player.getAttribute("cx"));
     const cy = parseInt(player.getAttribute("cy"));
+    const radius = parseInt(player.getAttribute("r"));
 
+    let wallX = cx;
+    let wallY = cy;
+    const wallWidth = 40;
+    const wallHeight = 10;
+
+    switch (facing) {
+        case "w":
+            wallX = cx - wallWidth / 2;
+            wallY = cy - radius - wallHeight - 2;
+            break;
+        case "s":
+            wallX = cx - wallWidth / 2;
+            wallY = cy + radius + 2;
+            break;
+        case "a":
+            wallX = cx - radius - wallHeight - 2;
+            wallY = cy - wallWidth / 2;
+            break;
+        case "d":
+            wallX = cx + radius + 2;
+            wallY = cy - wallWidth / 2;
+            break;
+    }
+
+    const wall = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    wall.setAttribute("id", "wall" + Date.now()); // or a unique id
+    wall.setAttribute("x", wallX);
+    wall.setAttribute("y", wallY);
+    if (facing === "w" || facing === "s") {
+        wall.setAttribute("width", wallWidth);
+        wall.setAttribute("height", wallHeight);
+    } else {
+        wall.setAttribute("width", wallHeight);
+        wall.setAttribute("height", wallWidth);
+    }
+    wall.setAttribute("fill", "brown");
+    svg.appendChild(wall);
+}
+  function shootProjectile(direction) {
+    if (!canShoot) return;
+    canShoot = false;
+
+    setTimeout(() => { canShoot = true; }, shootCooldown);
+
+    const svg = document.getElementById("a");
+    const player = a === "white" ? b : c;
+    const cx = parseInt(player.getAttribute("cx"));
+    const cy = parseInt(player.getAttribute("cy"));
 
     const projectile = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     projectile.setAttribute("cx", cx);
@@ -261,7 +260,6 @@ function i(newCx, newCy, radius) {
     projectile.setAttribute("fill", "red");
     svg.appendChild(projectile);
 
-    
     const speed = 5;
     let dx = 0, dy = 0;
     switch (direction) {
@@ -269,136 +267,44 @@ function i(newCx, newCy, radius) {
         case "ArrowDown": dy = speed; break;
         case "ArrowLeft": dx = -speed; break;
         case "ArrowRight": dx = speed; break;
-        default: return; 
+        default: return;
     }
+
+    const magnitude = Math.sqrt(dx * dx + dy * dy);
+    const vx = (dx / magnitude) * speed;
+    const vy = (dy / magnitude) * speed;
 
     function move() {
         let x = parseFloat(projectile.getAttribute("cx"));
         let y = parseFloat(projectile.getAttribute("cy"));
 
-        x += dx;
-        y += dy;
+        x += vx;
+        y += vy;
 
+        // Check collision with walls
+        if (checkProjectileWallCollision(x, y, 5)) {
+            svg.removeChild(projectile);
+            return;
+        }
+
+        // Update position
         projectile.setAttribute("cx", x);
         projectile.setAttribute("cy", y);
 
-        
+        // Out of bounds
         if (x < 0 || x > 800 || y < 0 || y > 800) {
             svg.removeChild(projectile);
             return;
         }
-        const opponent = a === "white" ? c : b;
-const ox = parseFloat(opponent.getAttribute("cx"));
-const oy = parseFloat(opponent.getAttribute("cy"));
-const oradius = parseFloat(opponent.getAttribute("r"));
 
-const dist = Math.sqrt((x - ox) ** 2 + (y - oy) ** 2);
-
-if (dist < oradius + 5) {
-    opponentHP--;
-    updateHPDisplay();
-    svg.removeChild(projectile);
-
-    if (opponentHP <= 0) {
-        opponentAlive = false;
-        alert("You win!");
-        
-    }
-
-    return;
-}
-
+        // Check if hit opponent
+        // ... your existing hit detection code ...
 
         requestAnimationFrame(move);
     }
 
     move();
-
-    
-    const barBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    barBg.setAttribute("x", cx - 20);
-    barBg.setAttribute("y", cy - 40);
-    barBg.setAttribute("width", 40);
-    barBg.setAttribute("height", 5);
-    barBg.setAttribute("fill", "#555");
-    svg.appendChild(barBg);
-
-    
-    const bar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    bar.setAttribute("x", cx - 20);
-    bar.setAttribute("y", cy - 40);
-    bar.setAttribute("width", 0);
-    bar.setAttribute("height", 5);
-    bar.setAttribute("fill", "limegreen");
-    svg.appendChild(bar);
-
-
-    let elapsed = 0;
-    const interval = 20;
-
-    const fillBar = setInterval(() => {
-        elapsed += interval;
-        const percent = Math.min(elapsed / shootCooldown, 1);
-        bar.setAttribute("width", 40 * percent);
-
-        if (percent >= 1) {
-            clearInterval(fillBar);
-            svg.removeChild(bar);
-            svg.removeChild(barBg);
-        }
-    }, interval);
 }
-function startOpponentAI() {
-    const interval = 300;
-    setInterval(() => {
-        if (!a || !opponentAlive) return;
-
-        const player = a === "white" ? b : c;
-        const opponent = a === "white" ? c : b;
-
-        const playerCx = parseInt(player.getAttribute("cx"));
-        const playerCy = parseInt(player.getAttribute("cy"));
-        const opponentCx = parseInt(opponent.getAttribute("cx"));
-        const opponentCy = parseInt(opponent.getAttribute("cy"));
-        const radius = parseInt(opponent.getAttribute("r"));
-        const step = 10;
-
-        // Distance
-        const dx = playerCx - opponentCx;
-        const dy = playerCy - opponentCy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // Line of sight shooting
-        if (hasLineOfSight(opponentCx, opponentCy, playerCx, playerCy) && dist > 40) {
-            if (opponentCanShoot) {
-                shootOpponentProjectile(opponentCx, opponentCy, dx, dy);
-                opponentCanShoot = false;
-                setTimeout(() => opponentCanShoot = true, opponentShootCooldown);
-            }
-        }
-
-        // Move toward player if not adjacent
-        if (dist > radius * 2) {
-            let moveX = 0;
-            let moveY = 0;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                moveX = dx > 0 ? step : -step;
-            } else {
-                moveY = dy > 0 ? step : -step;
-            }
-
-            const newCx = opponentCx + moveX;
-            const newCy = opponentCy + moveY;
-
-            if (!isCollidingWithWall(newCx, newCy, radius)) {
-                opponent.setAttribute("cx", newCx);
-                opponent.setAttribute("cy", newCy);
-            }
-        }
-    }, interval);
-}
-
 if(playerHP <= 0){
     
     playerAlive = false;
@@ -451,7 +357,8 @@ function shootOpponentProjectile(ox, oy, dx, dy) {
 
             if (playerHP <= 0) {
                 playerAlive = false;
-                alert("Game over! You lost.");
+                
+                if(t){alert("Game over! You lost.");t=false}
             }
 
             return;
@@ -462,8 +369,131 @@ function shootOpponentProjectile(ox, oy, dx, dy) {
 
     move();
 }
+function opponentShootAtPlayer() {
+    if (!a || !opponentAlive || !playerAlive) return;
 
+    const opponent = a === "white" ? c : b;
+    const player = a === "white" ? b : c;
 
+    const ox = parseFloat(opponent.getAttribute("cx"));
+    const oy = parseFloat(opponent.getAttribute("cy"));
+    const px = parseFloat(player.getAttribute("cx"));
+    const py = parseFloat(player.getAttribute("cy"));
+
+    // Optional: only shoot if line of sight is clear
+    if (hasLineOfSight(ox, oy, px, py)) {
+        shootOpponentProjectile(ox, oy, px - ox, py - oy);
+    }
+}
+// Add this function to your script
+let opponentShootCooldown = false;
+
+function opponentShootAtPlayer() {
+    if (!a || !opponentAlive || !playerAlive || opponentShootCooldown) return;
+
+    const opponent = a === "white" ? c : b;
+    const player = a === "white" ? b : c;
+
+    const ox = parseFloat(opponent.getAttribute("cx"));
+    const oy = parseFloat(opponent.getAttribute("cy"));
+    const px = parseFloat(player.getAttribute("cx"));
+    const py = parseFloat(player.getAttribute("cy"));
+
+    // Optional: check line of sight before shooting
+    if (hasLineOfSight(ox, oy, px, py)) {
+        shootOpponentProjectile(ox, oy, px - ox, py - oy);
+        // Set cooldown so it doesn't shoot too often
+        opponentShootCooldown = true;
+        setTimeout(() => { opponentShootCooldown = false; }, 1000); // 1 second cooldown
+    }
+}
+
+// Modify your startOpponentAI() to include shooting
+function startOpponentAI() {
+    const interval = 300; // movement interval
+
+    setInterval(() => {
+        if (!a || !opponentAlive || !playerAlive) return;
+
+        const opponent = a === "white" ? c : b;
+        const player = a === "white" ? b : c;
+
+        const playerCx = parseFloat(player.getAttribute("cx"));
+        const playerCy = parseFloat(player.getAttribute("cy"));
+        const opponentCx = parseFloat(opponent.getAttribute("cx"));
+        const opponentCy = parseFloat(opponent.getAttribute("cy"));
+        const radius = parseFloat(opponent.getAttribute("r"));
+        const step = 10;
+
+        const dx = playerCx - opponentCx;
+        const dy = playerCy - opponentCy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Move toward the player
+        if (dist > radius * 2) {
+            let moveX = 0;
+            let moveY = 0;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                moveX = dx > 0 ? step : -step;
+            } else {
+                moveY = dy > 0 ? step : -step;
+            }
+
+            // Dodge logic (optional)
+            let dodgeX = 0;
+            let dodgeY = 0;
+            if (Math.random() < 0.3) { // dodge chance
+                if (moveX !== 0) {
+                    dodgeY = Math.random() < 0.5 ? -step : step;
+                } else if (moveY !== 0) {
+                    dodgeX = Math.random() < 0.5 ? -step : step;
+                }
+            }
+
+            const newCx = opponentCx + moveX + dodgeX;
+            const newCy = opponentCy + moveY + dodgeY;
+
+            if (!i(newCx, newCy, radius)) {
+                opponent.setAttribute("cx", newCx);
+                opponent.setAttribute("cy", newCy);
+            } else {
+                // fallback movement
+                if (!i(opponentCx + moveX, opponentCy + moveY, radius)) {
+                    opponent.setAttribute("cx", opponentCx + moveX);
+                    opponent.setAttribute("cy", opponentCy + moveY);
+                }
+            }
+        }
+
+        // Call the shooting function periodically
+        opponentShootAtPlayer();
+
+    }, interval);
+}
+function checkProjectileWallCollision(x, y, radius) {
+    const walls = document.querySelectorAll("rect");
+    for (const wall of walls) {
+        if (wall.id.startsWith("wall")) {
+            const wx = parseFloat(wall.getAttribute("x"));
+            const wy = parseFloat(wall.getAttribute("y"));
+            const ww = parseFloat(wall.getAttribute("width"));
+            const wh = parseFloat(wall.getAttribute("height"));
+
+            // Find closest point on wall to projectile
+            const closestX = Math.max(wx, Math.min(x, wx + ww));
+            const closestY = Math.max(wy, Math.min(y, wy + wh));
+
+            const dx = x - closestX;
+            const dy = y - closestY;
+            if ((dx * dx + dy * dy) < (radius * radius)) {
+                // Collision detected
+                return true;
+            }
+        }
+    }
+    return false;
+}
         </script>
     </body>
 </html>
