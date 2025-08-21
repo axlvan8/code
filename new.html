@@ -274,35 +274,44 @@ function i(newCx, newCy, radius) {
     const vx = (dx / magnitude) * speed;
     const vy = (dy / magnitude) * speed;
 
-    function move() {
-        let x = parseFloat(projectile.getAttribute("cx"));
-        let y = parseFloat(projectile.getAttribute("cy"));
+   function move() {
+    let x = parseFloat(projectile.getAttribute("cx"));
+    let y = parseFloat(projectile.getAttribute("cy"));
 
-        x += vx;
-        y += vy;
+    x += vx;
+    y += vy;
 
-        // Check collision with walls
-        if (checkProjectileWallCollision(x, y, 5)) {
-            svg.removeChild(projectile);
-            return;
-        }
-
-        // Update position
-        projectile.setAttribute("cx", x);
-        projectile.setAttribute("cy", y);
-
-        // Out of bounds
-        if (x < 0 || x > 800 || y < 0 || y > 800) {
-            svg.removeChild(projectile);
-            return;
-        }
-
-        // Check if hit opponent
-        // ... your existing hit detection code ...
-
-        requestAnimationFrame(move);
+    // Check wall collision
+    if (checkProjectileWallCollision(x, y, 5)) {
+        svg.removeChild(projectile);
+        return;
     }
 
+    // Update position
+    projectile.setAttribute("cx", x);
+    projectile.setAttribute("cy", y);
+
+    // Out of bounds
+    if (x < 0 || x > 800 || y < 0 || y > 800) {
+        svg.removeChild(projectile);
+        return;
+    }
+
+    // Check collision with opponent
+    const opponent = a === "white" ? c : b; // depends on who shot
+    if (checkProjectileOpponentCollision(x, y, 5, opponent)) {
+        opponentHP--;
+        updateHPDisplay();
+        svg.removeChild(projectile);
+        if (opponentHP <= 0) {
+            opponentAlive = false;
+            alert("You win!");
+        }
+        return;
+    }
+
+    requestAnimationFrame(move);
+}
     move();
 }
 if(playerHP <= 0){
@@ -336,7 +345,7 @@ function shootOpponentProjectile(ox, oy, dx, dy) {
 
         projectile.setAttribute("cx", x);
         projectile.setAttribute("cy", y);
-
+       
         // Out of bounds
         if (x < 0 || x > 800 || y < 0 || y > 800) {
             svg.removeChild(projectile);
@@ -363,6 +372,7 @@ function shootOpponentProjectile(ox, oy, dx, dy) {
 
             return;
         }
+
 
         requestAnimationFrame(move);
     }
@@ -493,6 +503,14 @@ function checkProjectileWallCollision(x, y, radius) {
         }
     }
     return false;
+}
+function checkProjectileOpponentCollision(px, py, pr, opponent) {
+    const ox = parseFloat(opponent.getAttribute("cx"));
+    const oy = parseFloat(opponent.getAttribute("cy"));
+    const or = parseFloat(opponent.getAttribute("r"));
+
+    const dist = Math.sqrt((px - ox) ** 2 + (py - oy) ** 2);
+    return dist < pr + or;
 }
         </script>
     </body>
