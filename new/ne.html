@@ -1,11 +1,36 @@
-<!DOCTYPE html><html><head><title>head</title><meta charset="UTF-8"></head>
+<!DOCTYPE html><html><head><title>head</title><style>
+    body{
+        background-color:aliceblue;
+        color:#333;
+    }
+    #svg1{
+        background-color: aliceblue;
+    }
+</style><meta charset="UTF-8"></head>
 <body><canvas id="canvas" width="400" height="400"></canvas><script src="new.js">
-</script><script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
-<p id="r">sd</p><script>t(2,2,2);
-document.getElementById("r").innerText=u;
-    
+</script>
+<svg height="400" width="400" id="svg1"><rect id="rect1" x="100" y="100" height="10" width="10" fill="black"></rect><rect id="manager" width="5" height="5" x="200" y="200" fill="black"></rect></svg><script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
 
+<script src="test.js"></script>
+<button onclick="drawText('hello', 200,200,{
+    font:'30px Arial',
+    color:'black',
+    textAlign:'left',
+    textBaseline:'top'
+})">setup</button>
+<button onclick="drawText('gl',200,200,{});">jygf</button>
+<p id="r">sd</p><script>
+window.addEventListener('keydown',(e)=>{
+    if(e.code===" "||e.key==="Space")
+    {
+        alert("up");
+        up1(10);
+    }
+})
+
+ 
     </script>
+    
   </body>
 </html>
-</script></body></html>
+

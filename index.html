@@ -3,7 +3,8 @@
   <!--index-->
     <head>
         <title>tyty</title>
-        
+        <script src="comment.js"></script>
+        <script src="t.js"></script>
         <link 
         id="favicon"
         rel="icon"
@@ -18,6 +19,13 @@
             <button onclick="acceptCookies()">Accept</button>
             <button onclick="rejectCookies()">Reject</button>
         </div>
+        <textarea id="ut" rows="5"></textarea>
+        <button onclick="bin(document.getElementById('ut').value)">b</button>
+        <button onclick="translateAscii(document.getElementById('ut').value);">t</button>
+        <button onclick="copyToClipboard('asciiOutput')">📋 Copy Output</button>
+        <button onclick="copyToClipboard('ut')">📋 Copy Binary Input</button>
+
+        <p id="asciiOutput"></p>
         <div id="cookie-banner-ccpa"  class="cookie-banner " >
           <p>We use cookies. <a href="cookies.html">Learn more</a> |
              <a href="/do-not-sell">Do Not Sell My Info</a></p>
@@ -31,6 +39,44 @@
         
 
         <style>
+          div{
+            border:#333
+          }
+          a{
+            color:#0bf;
+          }
+          a:hover{
+            color:blue;
+          }
+          #protected-content{
+            border-radius: 10px;
+            border-color: #333;
+          }
+          input{
+            border-radius: 10px;
+          }
+          input:hover{
+            border-color:#0bf;
+            border-top-color: rgb(126, 214, 247);
+          }
+          button{
+            background-color:whitesmoke;
+            border-color:white;
+            border-radius: 4px;
+            border-image: auto;
+
+          }
+          button:hover{
+            background-color:#0bf;
+            border-color:white;
+            border-radius: 4px;
+            border-width: 0.6mm;
+          }
+          legend{
+            border-radius: 90px;
+            border-color:#333;
+          }
+          
           iframe{
             background-color: #333;
           }
@@ -69,7 +115,10 @@
             }
             canvas{
                 border: 2px solid #daf7a3;
+                border: 2px solid block;
+                background-color: #87ceeb;
             }
+            
 
             #backgroundImage{
                 border: #87ceeb;
@@ -104,11 +153,15 @@
                 background-color:#ddd;
                 color: black;
             }
+            #time:hover{
+              border-color: #222;
+              border-radius: 90%;
+            }
         </style>
         
         <script src="cookies.js"></script>
         <iframe id="backgroundImage" src=""></iframe>
-        <nt-app></nt-app>
+        
         <link rel="json" src="wert.json">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,requiresActiveX=true" />
         <meta charset="UTF-8">
@@ -129,27 +182,26 @@
         </script>
     
     <script src="local.js"></script>
+    <div id="time">
     <p id="currentTime"></p>
     <p id="didy"></p>
     <p id="wert"></p>
     <p id="trew"></p>
+    </div>
     <script src="sod.js"></script>
     <fieldset><legend id="leg">Enter Name</legend>
-        <input type="text" id="username">tyty
-        <button onclick="storeName();">store name</button>
-        <button onclick="recallName();">recall name</button>
-        <button onclick="removeName();">remove name</button>
+        <input type="text" id="username"><br>
+        <button onclick="storeName();">store name</button><br>
+        <button onclick="recallName();">recall name</button><br>
+        <button onclick="removeName();">remove name</button><br>
     </fieldset>            
         
         <ul contenteditable="true" id="list">
             <li>1</li><li>2</li><li>3</li></ul>
-        <style>
-            canvas{
-                border: 2px solid block;
-                background-color: #87ceeb;
-            }
+        
             
-        </style>
+            
+        
         <div id="container"></div>
         <p id="ggg" style="font-size: 20px; color: blue;"></p>
         <div id="container"></div>
@@ -198,8 +250,13 @@
                             }
                     })
                     function logout() {
+                      var gfd = prompt("are you sure?response: yes or no.");
+                      if(gfd.trim()==="yes"){
                       localStorage.removeItem('loggedInUser');
                       location.reload();
+                      }else{
+                        return;
+                      }
                     }
                 
                     
@@ -257,7 +314,7 @@
 
   let gameRunning = true;
 
-  function jump() {
+  function jmp() {
     vy = jumpPower;
   }
 
@@ -339,7 +396,7 @@
                 
                 frcl = false;
                }else{
-                jump();
+                jmp();
                }
            }
            const iframe = document.getElementById("game");
@@ -348,7 +405,7 @@
                 document.getElementById("gameb").src = url;
             }
           
-            throw new Error(iframe);
+            
           
         </script>
         <canvas id="canvy"></canvas>
@@ -386,12 +443,20 @@
                 </button>
                 <ul id="projectList"></ul>
             </div>
+            
             <a href="editor.html">Tyty Editor</a>
             <a href="test2.html">FlappyBird</a>
              <iframe height="800" width="800" src="" id="gameb" style="border:1px solid black;">
                 
              </iframe>
+              <div id="comments">
+              
 
+              <ul id="comments-list"></ul>
+              <p>comment:</p>
+              <textarea id="commentt" rows="3"></textarea>
+              <button id="add-comment">POST</button>
+            </div>
         
 
        
@@ -420,7 +485,7 @@
         <h1 id="hf"></h1>
         <h2 id="hr"></h2>
         <script>
-          try{
+          
             function getRandomInt(min,max){
                 return Math.floor(Math.random() * (max - min + 1)) + min;
             }
@@ -438,15 +503,14 @@
                         var ab = ((aa * x) / (s * x)) / (Date.now() * getRandomInt(1, z(new Date(), Math.random())));
                         document.getElementById("hr").textContent = ab;
                         if(ab > 50 && ab < 500){
-                            localStorage.setItem(bd, JSON.stringify(ab))
+                            localStorage.setItem('bd', JSON.stringify(ab))
                         }
                     }
                     function ba(d, f){
-                        var aa = localStorage.getItem(bd);
+                        var aa = localStorage.getItem('bd')
+                        parseInt(aa)
                     }
-                  }catch(e){
-                    throw new Error(e);
-                  }
+                  
                 
             
         </script>
