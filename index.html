@@ -54,6 +54,7 @@
           }
           input{
             border-radius: 10px;
+            width: 4in;
           }
           input:hover{
             border-color:#0bf;
@@ -158,6 +159,11 @@
               border-color: #222;
               border-radius: 90%;
             }
+            :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#3b82f6; --muted:#94a3b8; --danger:#ef4444;
+    --radius:12px; --pad:18px;
+  }
+  
         </style>
         
         <script src="cookies.js"></script>
@@ -181,7 +187,161 @@
 }
             
         </script>
-    
+    <!-- PARENTAL GATE UI (drop into your page) -->
+<div id="parent-setup" style="padding:12px;border:1px solid #444;max-width:420px;">
+  <h3>Parental controls (setup)</h3>
+  <div id="setup-area">
+    <input id="newParentPwd" type="password" placeholder="Choose parental password" style="width:70%">
+    <button id="setParentBtn">Set Password</button>
+    <p id="setupMsg" style="color:green"></p>
+  </div>
+
+  <div id="auth-area" style="margin-top:10px;">
+    <input id="parentPwd" type="password" placeholder="Enter parental password to unlock" style="width:70%">
+    <button id="verifyBtn">Verify</button>
+    <button id="clearAuthBtn">Clear Approval</button>
+    <p id="authMsg" style="color:red"></p>
+  </div>
+</div>
+
+<script>
+/* ---------- Parental gate implementation ---------- */
+/* Uses PBKDF2 to derive 256-bit key, stores salt+derived key hex in localStorage.
+   Approval (short-lived) stored in sessionStorage. */
+
+(function(){
+  // Config
+  const APPROVAL_TTL_MS = 1000 * 60 * 60; // 1 hour approval (change as needed)
+
+  // Helpers
+  function toHex(buf){
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+  function hexToBytes(hex){
+    if(!hex) return null;
+    return new Uint8Array(hex.match(/.{1,2}/g).map(b=>parseInt(b,16)));
+  }
+
+  async function deriveKey(password, salt, iterations = 120000){
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+    const params = {name:'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256'};
+    const bits = await crypto.subtle.deriveBits(params, baseKey, 256);
+    return new Uint8Array(bits);
+  }
+
+  // UI elements
+  const newParentPwd = document.getElementById('newParentPwd');
+  const setParentBtn = document.getElementById('setParentBtn');
+  const setupMsg = document.getElementById('setupMsg');
+
+  const parentPwd = document.getElementById('parentPwd');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const authMsg = document.getElementById('authMsg');
+  const clearAuthBtn = document.getElementById('clearAuthBtn');
+
+  // Create initial state
+  function parentPasswordExists(){
+    return !!localStorage.getItem('parent_salt') && !!localStorage.getItem('parent_hash');
+  }
+
+  // Set parental password (run once on device)
+  setParentBtn.addEventListener('click', async () => {
+    setupMsg.textContent = '';
+    const pwd = newParentPwd.value || '';
+    if(!pwd){
+      setupMsg.style.color = 'red';
+      setupMsg.textContent = 'Enter a password first.';
+      return;
+    }
+    // generate salt and derived key
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const hash = await deriveKey(pwd, salt);
+    localStorage.setItem('parent_salt', toHex(salt));
+    localStorage.setItem('parent_hash', toHex(hash));
+    newParentPwd.value = '';
+    setupMsg.style.color = 'green';
+    setupMsg.textContent = 'Parental password saved locally on this device.';
+  });
+
+  // Verify password
+  verifyBtn.addEventListener('click', async () => {
+    authMsg.textContent = '';
+    const pwd = parentPwd.value || '';
+    if(!pwd){
+      authMsg.style.color = 'red';
+      authMsg.textContent = 'Enter parental password.';
+      return;
+    }
+    const saltHex = localStorage.getItem('parent_salt');
+    const hashHex = localStorage.getItem('parent_hash');
+    if(!saltHex || !hashHex){
+      authMsg.style.color = 'red';
+      authMsg.textContent = 'No parental password set. Set it first.';
+      return;
+    }
+    const salt = hexToBytes(saltHex);
+    const derived = await deriveKey(pwd, salt);
+    if(toHex(derived) === hashHex){
+      // success -> set approval in sessionStorage
+      const until = Date.now() + APPROVAL_TTL_MS;
+      sessionStorage.setItem('parent_approved_until', String(until));
+      authMsg.style.color = 'green';
+      authMsg.textContent = 'Password accepted — approval granted ✅';
+      parentPwd.value = '';
+    } else {
+      authMsg.style.color = 'red';
+      authMsg.textContent = 'Incorrect password.';
+    }
+  });
+
+  // Clear approval (useful for testing)
+  clearAuthBtn.addEventListener('click', () => {
+    sessionStorage.removeItem('parent_approved_until');
+    authMsg.style.color = 'black';
+    authMsg.textContent = 'Approval cleared.';
+  });
+
+  // Utility: check approval
+  window.isParentApproved = function(){
+    const until = Number(sessionStorage.getItem('parent_approved_until') || 0);
+    return Date.now() < until;
+  };
+
+  // If no parent password set, show a hint
+  if(!parentPasswordExists()){
+    setupMsg.style.color = 'orange';
+    setupMsg.textContent = 'No parental password set — please set one before locking content.';
+  } else {
+    setupMsg.textContent = '';
+  }
+
+  /* --- Override changeIframeSource (if present) to require approval for cowboy/new.html --- */
+  // Save original if present
+  const origChange = window.changeIframeSource;
+  window.changeIframeSource = function(url){
+    // Protect only the cowboy target ('new.html') — adjust if your cowboy file is different
+    const protectedPaths = ['new.html', 'cowboy.html', 'cowboy']; // add variations if needed
+    const isProtected = protectedPaths.some(p => url.includes(p));
+    if(isProtected && !window.isParentApproved()){
+      // If not approved, show a quick modal/prompt. We prefer the input field UI above,
+      // but as fallback we prompt for the password:
+      const tryPrompt = confirm('Parental approval required to open this game. Click OK to enter password now.');
+      if(tryPrompt){
+        // open the small modal by focusing the input
+        parentPwd.focus();
+      }
+      return; // do not load
+    }
+    // allowed: call original if exists or directly update iframe
+    if(typeof origChange === 'function') return origChange(url);
+    const iframe = document.getElementById('gameb') || document.getElementById('backgroundImage');
+    if(iframe) iframe.src = url;
+  };
+
+})();
+</script>
+
     <script src="local.js"></script>
     <div id="time">
     <p id="currentTime"></p>
@@ -190,6 +350,169 @@
     <p id="trew"></p>
     </div>
     <script src="sod.js"></script>
+    <div id="pw">
+      <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Parental Approval Required</h1>
+    <p class="lead">Enter the parental password below to continue. This page runs entirely in your browser (no files uploaded).</p>
+
+    <form id="gate" autocomplete="off" onsubmit="return false;">
+      <label for="reason">Reason (optional)</label>
+      <input id="reason" name="reason" type="text" placeholder="Why is access requested? (optional)" aria-label="Reason for access">
+
+      <label for="pwd">Parental password</label>
+      <div class="row">
+        <input id="pwd" name="pwd" type="password" placeholder="Enter parental password" aria-label="Parental password" required>
+        <button id="toggle" type="button" class="ghost" aria-pressed="false" title="Show / hide">Show</button>
+      </div>
+
+      <div class="actions">
+        <button id="submitBtn" type="button">Submit</button>
+        <button id="clearBtn" type="button" class="ghost">Clear</button>
+      </div>
+
+      <div id="message" class="msg hidden" role="status" aria-live="polite"></div>
+      <div id="meta" class="meta">Attempts left: <span id="attempts">5</span></div>
+    </form>
+
+    <footer>
+      <div class="small">This is a local-only check. For stronger parental control, use OS tools or server-verified checks.</div>
+    </footer>
+  </main>
+
+<script>
+
+const PARENT_HASH = 'e47125968b3b71049fbc4802d1e40a71ea1359decfabacf70b34588037d4ff0c';
+// parent
+
+const MAX_ATTEMPTS = 5;
+let attemptsLeft = MAX_ATTEMPTS;
+let lockoutUntil = 0; // timestamp ms
+
+const pwdInput = document.getElementById('pwd');
+const submitBtn = document.getElementById('submitBtn');
+const clearBtn = document.getElementById('clearBtn');
+const message = document.getElementById('message');
+const attemptsEl = document.getElementById('attempts');
+const toggle = document.getElementById('toggle');
+
+attemptsEl.textContent = attemptsLeft;
+
+toggle.addEventListener('click', () => {
+  const isHidden = pwdInput.type === 'password';
+  pwdInput.type = isHidden ? 'text' : 'password';
+  toggle.textContent = isHidden ? 'Hide' : 'Show';
+  toggle.setAttribute('aria-pressed', String(isHidden));
+});
+
+clearBtn.addEventListener('click', () => {
+  pwdInput.value = '';
+  message.classList.add('hidden');
+  pwdInput.focus();
+});
+
+submitBtn.addEventListener('click', async () => {
+  clearMessage();
+
+  if (Date.now() < lockoutUntil) {
+    const secs = Math.ceil((lockoutUntil - Date.now())/1000);
+    showMessage(`Too many failed attempts. Try again in ${secs} second(s).`, true);
+    return;
+  }
+
+  const pwd = pwdInput.value || '';
+  if (!pwd) { showMessage('Please enter the parental password.', true); pwdInput.focus(); return; }
+
+  // compute hash and compare
+  try {
+    const h = await computeHash(pwd);
+    if (normalizeHex(h) === normalizeHex(PARENT_HASH)) {
+      // success
+      showMessage('Password accepted — parental approval granted ✅', false, true);
+      onSuccess();
+    } else {
+      attemptsLeft--;
+      attemptsEl.textContent = attemptsLeft;
+      if (attemptsLeft <= 0) {
+        // lockout for 60 seconds (configurable)
+        const lockSec = 60;
+        lockoutUntil = Date.now() + lockSec*1000;
+        showMessage(`Incorrect password. Too many failures — locked for ${lockSec} seconds.`, true);
+      } else {
+        showMessage(`Incorrect password. ${attemptsLeft} attempt(s) left.`, true);
+      }
+      pwdInput.focus();
+    }
+  } catch (err) {
+    showMessage('Crypto error: ' + err.message, true);
+  }
+});
+
+function onSuccess() {
+  // Customize this: what should happen after approval?
+  // Example: reveal content, redirect, or enable a button.
+  // For demonstration we'll reveal a short success panel and disable the form.
+  submitBtn.disabled = true;
+  pwdInput.disabled = true;
+  toggle.disabled = true;
+  clearBtn.disabled = true;
+
+  // Optionally you can perform other actions here.
+}
+
+// show message helper
+function showMessage(text, isError=false, isOk=false){
+  message.textContent = text;
+  message.classList.remove('hidden');
+  message.classList.toggle('error', isError);
+  message.classList.toggle('ok', isOk);
+}
+
+// clear message
+function clearMessage(){ message.textContent=''; message.classList.add('hidden'); message.classList.remove('error','ok'); }
+
+// create SHA-256 hex from input string using SubtleCrypto
+async function computeHash(str){
+  if (!window.crypto || !crypto.subtle) throw new Error('Web Crypto API not available in this browser.');
+  const enc = new TextEncoder();
+  const data = enc.encode(str);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return bufferToHex(digest);
+}
+function bufferToHex(buffer){
+  const bytes = new Uint8Array(buffer);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++){
+    const h = bytes[i].toString(16).padStart(2,'0');
+    hex += h;
+  }
+  return hex;
+}
+function normalizeHex(h){
+  return h.trim().toLowerCase().replace(/^0x/,'');
+}
+
+/* Optional developer helper: compute and log hash from console.
+   Example: computeHash('parent123').then(h => console.log(h));
+   Remove or ignore in production.
+*/
+window.computeHash = computeHash;
+
+/* Small accessibility: submit on Enter inside password field */
+pwdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitBtn.click();
+});
+
+/* Optional: recurring check to reset attempts when lockout expires */
+setInterval(() => {
+  if (lockoutUntil && Date.now() >= lockoutUntil) {
+    lockoutUntil = 0;
+    attemptsLeft = MAX_ATTEMPTS;
+    attemptsEl.textContent = attemptsLeft;
+    clearMessage();
+  }
+}, 1000);
+</script>
+    </div>
     <fieldset><legend id="leg">Enter Name</legend>
         <input type="text" id="username"><br>
         <button onclick="storeName();">store name</button><br>
@@ -289,10 +612,10 @@
             <rect id="pipeTop" x="350" y="0" width="60" height="150" fill="black"></rect>
             <rect id="pipeBottom" x="350" y="300" width="60" height="300" fill="black"></rect>
         </svg>
-         <button height="300" width="200" onclick="let a = true;if(a){animate()}else{jump()}">JUMP</button>
+         <button height="300" width="200" onclick=";if(a){a=false;animate()}else{jmp()}">JUMP</button>
         <p id="score">Score: </p>
         <script>
-          
+          let a = true;
           
             function fullscreenSVG(newWidth, newHeight) {
                  
