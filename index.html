@@ -19,13 +19,7 @@
             <button onclick="acceptCookies()">Accept</button>
             <button onclick="rejectCookies()">Reject</button>
         </div>
-        <textarea id="ut" rows="5"></textarea>
-        <button onclick="bin(document.getElementById('ut').value)">b</button>
-        <button onclick="translateAscii(document.getElementById('ut').value);">t</button>
-        <button onclick="copyToClipboard('asciiOutput')" id="copyOutput">📋 Copy Output</button>
-        <button onclick="copyToClipboard('ut')" id="copyInput">📋 Copy Binary Input</button>
-
-        <p id="asciiOutput"></p>
+        
         <div id="cookie-banner-ccpa"  class="cookie-banner " >
           <p>We use cookies. <a href="cookies.html">Learn more</a> |
              <a href="/do-not-sell">Do Not Sell My Info</a></p>
@@ -491,10 +485,6 @@ function normalizeHex(h){
   return h.trim().toLowerCase().replace(/^0x/,'');
 }
 
-/* Optional developer helper: compute and log hash from console.
-   Example: computeHash('parent123').then(h => console.log(h));
-   Remove or ignore in production.
-*/
 window.computeHash = computeHash;
 
 /* Small accessibility: submit on Enter inside password field */
@@ -728,7 +718,16 @@ setInterval(() => {
             function changeIframeSource(url){
                 document.getElementById("gameb").src = url;
             }
-          
+            function gvc(dsuhg){
+                var ggkg=`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><textarea id='ut' rows='5'></textarea>
+        <button onclick="bin(document.getElementById('ut').value)">b</button>
+        <button onclick="translateAscii(document.getElementById('ut').value);">t</button>
+        <button onclick="copyToClipboard('asciiOutput')" id="copyOutput">📋 Copy Output</button>
+        <button onclick="copyToClipboard('ut')" id="copyInput">📋 Copy Binary Input</button>
+
+        <p id="asciiOutput" style="color:white;"></p></body></html>`
+                  document.getElementById("gameb").srcdoc=ggkg;
+            }
             
           
         </script>
@@ -764,6 +763,9 @@ setInterval(() => {
                 </button>
                 <button onclick="changeIframeSource('new.html')">
                     cowboy
+                </button>
+                <button onclick="gvc()">
+                    ascii translator
                 </button>
                 <ul id="projectList"></ul>
             </div>

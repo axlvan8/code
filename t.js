@@ -1,5 +1,5 @@
 var i=0;
-
+//t.js
 var p=document.getElementById("asciiOutput");
 function translateAscii(input){
     /*unfinished old version.
