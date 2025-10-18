@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Cube Game</title>
+  <style>
+    canvas {
+      background: black;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="900" height="900"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const cubePoints = [
+      [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+      [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+    ];
+
+    const edges = [
+      [0,1], [1,2], [2,3], [3,0],
+      [4,5], [5,6], [6,7], [7,4],
+      [0,4], [1,5], [2,6], [3,7]
+    ];
+
+    let angleX = 0;
+    let angleY = 0;
+
+    const player = {
+      position: [0, 0], // x, y only; z = 0 fixed
+      size: 0.6
+    };
+
+    let obstacles = [];
+    let gameOver = false;
+    let score = 0;
+
+    function rotate(point, angleX, angleY) {
+      let [x, y, z] = point;
+
+      // Rotate around X axis
+      let cosX = Math.cos(angleX);
+      let sinX = Math.sin(angleX);
+      let y1 = y * cosX - z * sinX;
+      let z1 = y * sinX + z * cosX;
+
+      y = y1;
+      z = z1;
+
+      // Rotate around Y axis
+      let cosY = Math.cos(angleY);
+      let sinY = Math.sin(angleY);
+      let x1 = x * cosY + z * sinY;
+      let z2 = -x * sinY + z * cosY;
+
+      x = x1;
+      z = z2;
+
+      return [x, y, z];
+    }
+
+    function project([x, y, z]) {
+      const distance = 3;
+      const scale = 200 / (z + distance);
+      const screenX = x * scale + width / 2;
+      const screenY = y * scale + height / 2;
+      return [screenX, screenY];
+    }
+
+    function drawCube(pos, scale, color = "lime", rotateCube = true) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+
+      const points = cubePoints.map(p => {
+        let [px, py, pz] = p;
+        let point = [
+          px * scale + pos[0],
+          py * scale + pos[1],
+          pz * scale + pos[2]
+        ];
+        if (rotateCube) {
+          point = rotate(point, angleX, angleY);
+        }
+        return project(point);
+      });
+
+      edges.forEach(([a, b]) => {
+        const [x1, y1] = points[a];
+        const [x2, y2] = points[b];
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      });
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 1;
+
+      for (let i = -5; i <= 5; i++) {
+        const [x1, y1] = project([i, -5, 0]);
+        const [x2, y2] = project([i, 5, 0]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        const [x3, y3] = project([-5, i, 0]);
+        const [x4, y4] = project([5, i, 0]);
+        ctx.beginPath();
+        ctx.moveTo(x3, y3);
+        ctx.lineTo(x4, y4);
+        ctx.stroke();
+      }
+    }
+
+    function drawPlayerShadow() {
+      const [x, y] = project([player.position[0], player.position[1], 0]);
+      ctx.fillStyle = "cyan";
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function spawnObstacle() {
+      const x = (Math.random() - 0.5) * 4;
+      const y = (Math.random() - 0.5) * 4;
+      obstacles.push({
+        position: [x, y, 5],
+        speed: 0.03
+      });
+    }
+
+    function draw() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, width, height);
+      drawGrid();
+
+      // Draw player
+      drawPlayerShadow();
+      drawCube([player.position[0], player.position[1], 0], player.size, "cyan", false);
+
+      // Draw and update obstacles
+      for (let i = 0; i < obstacles.length; i++) {
+        const ob = obstacles[i];
+        ob.position[2] -= ob.speed;
+
+        drawCube(ob.position, 0.3, "red");
+
+        // Simple 3D distance-based collision
+        const dx = ob.position[0] - player.position[0];
+        const dy = ob.position[1] - player.position[1];
+        const dz = ob.position[2];
+        if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6 && dz < 0.5) {
+          gameOver = true;
+          alert("💥 Game Over! Your Score: " + score);
+          return;
+        }
+      }
+
+      // Remove off-screen obstacles
+      obstacles = obstacles.filter(ob => ob.position[2] > -1);
+
+      // Draw score
+      score++;
+      ctx.fillStyle = "white";
+      ctx.font = "20px monospace";
+      ctx.fillText("Score: " + score, 20, 30);
+
+      // Animate
+      angleX += 0.01;
+      angleY += 0.013;
+      requestAnimationFrame(draw);
+    }
+
+    // Controls
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') player.position[0] -= 0.2;
+      if (e.key === 'ArrowRight') player.position[0] += 0.2;
+      if (e.key === 'ArrowUp') player.position[1] -= 0.2;
+      if (e.key === 'ArrowDown') player.position[1] += 0.2;
+    });
+
+    // Start obstacle spawning
+    setInterval(() => {
+      if (!gameOver) spawnObstacle();
+    }, 1000);
+
+    // Start game
+    draw();
+  </script>
+</body>
+</html>

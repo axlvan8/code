@@ -4,7 +4,6 @@ function showTime() {
     document.getElementById('wert').innerHTML = new Date().toUTCString();
     document.getElementById('trew').innerHTML = new Date().toISOString();
 }
-showTime();
 setInterval(function (){
     showTime();
 }, 1000);
