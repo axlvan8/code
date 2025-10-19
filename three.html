@@ -1,25 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>3D Cube Game</title>
   <style>
-    canvas {
+    body {
+      margin: 0;
+      overflow: hidden;
       background: black;
+    }
+    canvas {
       display: block;
       margin: 0 auto;
+      background: black;
     }
   </style>
 </head>
 <body>
   <canvas id="canvas" width="900" height="900"></canvas>
-
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-
     const width = canvas.width;
     const height = canvas.height;
+
+    const camera = {
+      position: [0, 0, -5],
+      rotation: [0, 0] // pitch (x), yaw (y)
+    };
 
     const cubePoints = [
       [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
@@ -27,80 +35,80 @@
     ];
 
     const edges = [
-      [0,1], [1,2], [2,3], [3,0],
-      [4,5], [5,6], [6,7], [7,4],
-      [0,4], [1,5], [2,6], [3,7]
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7]
     ];
 
-    let angleX = 0;
-    let angleY = 0;
-
-    const player = {
-      position: [0, 0], // x, y only; z = 0 fixed
-      size: 0.6
-    };
-
+    const player = { size: 0.6 };
     let obstacles = [];
-    let gameOver = false;
     let score = 0;
+    let gameOver = false;
+    const keys = {};
 
-    function rotate(point, angleX, angleY) {
-      let [x, y, z] = point;
+    // Handle key input
+    document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+    document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-      // Rotate around X axis
-      let cosX = Math.cos(angleX);
-      let sinX = Math.sin(angleX);
-      let y1 = y * cosX - z * sinX;
-      let z1 = y * sinX + z * cosX;
+    // Mouse look
+    function onMouseMove(e) {
+      const sensitivity = 0.002;
+      camera.rotation[1] -= e.movementX * sensitivity; // yaw
+      camera.rotation[0] -= e.movementY * sensitivity; // pitch
 
-      y = y1;
-      z = z1;
-
-      // Rotate around Y axis
-      let cosY = Math.cos(angleY);
-      let sinY = Math.sin(angleY);
-      let x1 = x * cosY + z * sinY;
-      let z2 = -x * sinY + z * cosY;
-
-      x = x1;
-      z = z2;
-
-      return [x, y, z];
+      // Clamp pitch
+      const maxPitch = Math.PI / 2 - 0.01;
+      camera.rotation[0] = Math.max(-maxPitch, Math.min(maxPitch, camera.rotation[0]));
     }
 
+    // Pointer lock for mouse look
+    canvas.addEventListener("click", () => canvas.requestPointerLock());
+    document.addEventListener("pointerlockchange", () => {
+      if (document.pointerLockElement === canvas) {
+        document.addEventListener("mousemove", onMouseMove);
+      } else {
+        document.removeEventListener("mousemove", onMouseMove);
+      }
+    });
+
+    // Rotate and project
     function project([x, y, z]) {
-      const distance = 3;
-      const scale = 200 / (z + distance);
-      const screenX = x * scale + width / 2;
-      const screenY = y * scale + height / 2;
-      return [screenX, screenY];
+      // Translate relative to camera
+      x -= camera.position[0];
+      y -= camera.position[1];
+      z -= camera.position[2];
+
+      // Camera rotation (yaw then pitch)
+      const cosY = Math.cos(-camera.rotation[1]);
+      const sinY = Math.sin(-camera.rotation[1]);
+      let dx = x * cosY - z * sinY;
+      let dz = x * sinY + z * cosY;
+
+      const cosX = Math.cos(-camera.rotation[0]);
+      const sinX = Math.sin(-camera.rotation[0]);
+      let dy = y * cosX - dz * sinX;
+      dz = y * sinX + dz * cosX;
+
+      const scale = 500 / (dz + 5);
+      return [dx * scale + width / 2, dy * scale + height / 2];
     }
 
-    function drawCube(pos, scale, color = "lime", rotateCube = true) {
+    function drawCube(pos, scale = 1, color = "lime") {
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
 
-      const points = cubePoints.map(p => {
-        let [px, py, pz] = p;
-        let point = [
-          px * scale + pos[0],
-          py * scale + pos[1],
-          pz * scale + pos[2]
-        ];
-        if (rotateCube) {
-          point = rotate(point, angleX, angleY);
-        }
-        return project(point);
-      });
+      const points = cubePoints.map(([px, py, pz]) =>
+        project([px * scale + pos[0], py * scale + pos[1], pz * scale + pos[2]])
+      );
 
-      edges.forEach(([a, b]) => {
+      for (const [a, b] of edges) {
         const [x1, y1] = points[a];
         const [x2, y2] = points[b];
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
-      });
+      }
     }
 
     function drawGrid() {
@@ -108,96 +116,222 @@
       ctx.lineWidth = 1;
 
       for (let i = -5; i <= 5; i++) {
-        const [x1, y1] = project([i, -5, 0]);
-        const [x2, y2] = project([i, 5, 0]);
+        const p1 = project([i, -5, 0]);
+        const p2 = project([i, 5, 0]);
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(...p1);
+        ctx.lineTo(...p2);
         ctx.stroke();
 
-        const [x3, y3] = project([-5, i, 0]);
-        const [x4, y4] = project([5, i, 0]);
+        const p3 = project([-5, i, 0]);
+        const p4 = project([5, i, 0]);
         ctx.beginPath();
-        ctx.moveTo(x3, y3);
-        ctx.lineTo(x4, y4);
+        ctx.moveTo(...p3);
+        ctx.lineTo(...p4);
         ctx.stroke();
       }
     }
 
-    function drawPlayerShadow() {
-      const [x, y] = project([player.position[0], player.position[1], 0]);
-      ctx.fillStyle = "cyan";
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+   function drawPlayerIndicator() {
+  // Position slightly in front of camera (reticle/body)
+  const camDir = [
+    Math.sin(camera.rotation[1]),
+    0,
+    Math.cos(camera.rotation[1])
+  ];
+  const playerPos = [
+    camera.position[0] + camDir[0] * 1,
+    camera.position[1],
+    camera.position[2] + camDir[2] * 1
+  ];
+  drawCube(playerPos, 0.3, "cyan");
+}
+
 
     function spawnObstacle() {
-      const x = (Math.random() - 0.5) * 4;
-      const y = (Math.random() - 0.5) * 4;
+      const x = (Math.random() - 0.5) * 10;
+      const y = (Math.random() - 0.5) * 10;
       obstacles.push({
-        position: [x, y, 5],
-        speed: 0.03
+        position: [x, y, camera.position[2] + 15],
+        speed: 0.05
       });
     }
 
-    function draw() {
-      if (gameOver) return;
+    function updateCameraMovement() {
+      const speed = 0.1;
+      const yaw = camera.rotation[1];
 
-      ctx.clearRect(0, 0, width, height);
-      drawGrid();
-
-      // Draw player
-      drawPlayerShadow();
-      drawCube([player.position[0], player.position[1], 0], player.size, "cyan", false);
-
-      // Draw and update obstacles
-      for (let i = 0; i < obstacles.length; i++) {
-        const ob = obstacles[i];
-        ob.position[2] -= ob.speed;
-
-        drawCube(ob.position, 0.3, "red");
-
-        // Simple 3D distance-based collision
-        const dx = ob.position[0] - player.position[0];
-        const dy = ob.position[1] - player.position[1];
-        const dz = ob.position[2];
-        if (Math.abs(dx) < 0.6 && Math.abs(dy) < 0.6 && dz < 0.5) {
-          gameOver = true;
-          alert("💥 Game Over! Your Score: " + score);
-          return;
-        }
+      if (keys["w"]) {
+        camera.position[0] += Math.sin(yaw) * speed;
+        camera.position[2] += Math.cos(yaw) * speed;
       }
-
-      // Remove off-screen obstacles
-      obstacles = obstacles.filter(ob => ob.position[2] > -1);
-
-      // Draw score
-      score++;
-      ctx.fillStyle = "white";
-      ctx.font = "20px monospace";
-      ctx.fillText("Score: " + score, 20, 30);
-
-      // Animate
-      angleX += 0.01;
-      angleY += 0.013;
-      requestAnimationFrame(draw);
+      if (keys["s"]) {
+        camera.position[0] -= Math.sin(yaw) * speed;
+        camera.position[2] -= Math.cos(yaw) * speed;
+      }
+      if (keys["a"]) {
+        camera.position[0] -= Math.cos(yaw) * speed;
+        camera.position[2] += Math.sin(yaw) * speed;
+      }
+      if (keys["d"]) {
+        camera.position[0] += Math.cos(yaw) * speed;
+        camera.position[2] -= Math.sin(yaw) * speed;
+      }
+      if (keys["q"] || keys["arrowup"]) camera.position[1] -= speed;
+      if (keys["e"] || keys["arrowdown"]) camera.position[1] += speed;
     }
+function draw() {
+  if (gameOver) return;
 
-    // Controls
-    document.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft') player.position[0] -= 0.2;
-      if (e.key === 'ArrowRight') player.position[0] += 0.2;
-      if (e.key === 'ArrowUp') player.position[1] -= 0.2;
-      if (e.key === 'ArrowDown') player.position[1] += 0.2;
-    });
+  ctx.clearRect(0, 0, width, height);
+  updateCameraMovement();
+  drawGrid();
+  drawPlayerIndicator();
+  drawCrosshair();
 
-    // Start obstacle spawning
+  // Update and draw obstacles
+  for (let i = 0; i < obstacles.length; i++) {
+    const ob = obstacles[i];
+    ob.position[2] -= ob.speed;
+    drawCube(ob.position, 0.3, "#a00"); // Darker red for obstacles
+
+    // Collision with player
+    if (Math.abs(ob.position[0] - camera.position[0]) < player.size &&
+        Math.abs(ob.position[1] - camera.position[1]) < player.size &&
+        Math.abs(ob.position[2] - camera.position[2]) < player.size) {
+      gameOver = true;
+      alert("💥 Game Over! Score: " + score);
+      return;
+    }
+  }
+
+  // Remove obstacles behind player
+  obstacles = obstacles.filter(ob => ob.position[2] > camera.position[2] - 2);
+
+  // Update enemies and projectiles once per frame
+  updateEnemies();
+  updateProjectiles();
+
+  score++;
+  ctx.fillStyle = "white";
+  ctx.font = "20px monospace";
+  ctx.fillText("Score: " + score, 20, 30);
+
+  requestAnimationFrame(draw);
+}
+
+    function drawCrosshair() {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  ctx.strokeStyle = "white";
+  ctx.beginPath();
+  ctx.moveTo(centerX - 5, centerY);
+  ctx.lineTo(centerX + 5, centerY);
+  ctx.moveTo(centerX, centerY - 5);
+  ctx.lineTo(centerX, centerY + 5);
+  ctx.stroke();
+}
+
     setInterval(() => {
       if (!gameOver) spawnObstacle();
     }, 1000);
+    let projectiles = [];
+let enemies = [];
 
-    // Start game
+canvas.addEventListener("click", () => {
+  // Shoot a projectile from camera forward
+  const dir = [
+    Math.sin(camera.rotation[1]),
+    Math.sin(camera.rotation[0]),
+    Math.cos(camera.rotation[1])
+  ];
+  projectiles.push({
+    position: [...camera.position],
+    direction: dir,
+    speed: 0.3
+  });
+});
+
+// Enemy spawn (similar to obstacles but smarter)
+function spawnEnemy() {
+  const x = (Math.random() - 0.5) * 10;
+  const y = (Math.random() - 0.5) * 10;
+  enemies.push({
+    position: [x, y, camera.position[2] + 20],
+    speed: 0.02
+  });
+}
+
+setInterval(() => {
+  if (!gameOver) spawnEnemy();
+}, 3000);
+
+function updateEnemies() {
+  for (const enemy of enemies) {
+    // Vector to player
+    let dx = camera.position[0] - enemy.position[0];
+    let dy = camera.position[1] - enemy.position[1];
+    let dz = camera.position[2] - enemy.position[2];
+
+    // Normalize direction
+    const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (length > 0) {
+      dx /= length;
+      dy /= length;
+      dz /= length;
+    }
+
+    // Move enemy toward player
+    enemy.position[0] += dx * enemy.speed;
+    enemy.position[1] += dy * enemy.speed;
+    enemy.position[2] += dz * enemy.speed;
+
+    // Draw enemy in red or different color
+    drawCube(enemy.position, 0.4, "red");
+
+    // Check collision with player
+    if (Math.abs(camera.position[0] - enemy.position[0]) < player.size &&
+    Math.abs(camera.position[1] - enemy.position[1]) < player.size &&
+    Math.abs(camera.position[2] - enemy.position[2]) < player.size){
+
+      gameOver = true;
+      alert("💥 Game Over! You were caught by an enemy! Score: " + score);
+      return;
+    }
+  }
+}
+
+function updateProjectiles() {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    let p = projectiles[i];
+    p.position[0] += p.direction[0] * p.speed;
+    p.position[1] += p.direction[1] * p.speed;
+    p.position[2] += p.direction[2] * p.speed;
+
+    // Draw projectile as small cube or dot
+    drawCube(p.position, 0.1, "yellow");
+
+    // Remove if too far
+    if (p.position[2] > camera.position[2] + 30) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Check collision with enemies
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      let e = enemies[j];
+      if (Math.abs(p.position[0] - e.position[0]) < 0.5 &&
+          Math.abs(p.position[1] - e.position[1]) < 0.5 &&
+          Math.abs(p.position[2] - e.position[2]) < 0.5) {
+        enemies.splice(j, 1);
+        projectiles.splice(i, 1);
+        score += 50; // Bonus for killing enemy
+        break;
+      }
+    }
+  }
+}
+
     draw();
   </script>
 </body>
