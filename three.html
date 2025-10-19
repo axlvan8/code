@@ -5,10 +5,12 @@
   <title>3D Cube Game</title>
   <style>
     body {
-      margin: 0;
-      overflow: hidden;
-      background: black;
-    }
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(to bottom, #001d3d, #000000);
+
+}
+
     canvas {
       display: block;
       margin: 0 auto;
@@ -93,23 +95,33 @@
       return [dx * scale + width / 2, dy * scale + height / 2];
     }
 
-    function drawCube(pos, scale = 1, color = "lime") {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+    function drawCube(pos, scale = 1, baseColor = "lime") {
+  // Calculate approximate depth (distance from camera)
+  const dx = pos[0] - camera.position[0];
+  const dy = pos[1] - camera.position[1];
+  const dz = pos[2] - camera.position[2];
+  const depth = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-      const points = cubePoints.map(([px, py, pz]) =>
-        project([px * scale + pos[0], py * scale + pos[1], pz * scale + pos[2]])
-      );
+  // Apply fog
+  const color = applyFogColor(baseColor, depth);
 
-      for (const [a, b] of edges) {
-        const [x1, y1] = points[a];
-        const [x2, y2] = points[b];
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-    }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+
+  const points = cubePoints.map(([px, py, pz]) =>
+    project([px * scale + pos[0], py * scale + pos[1], pz * scale + pos[2]])
+  );
+
+  for (const [a, b] of edges) {
+    const [x1, y1] = points[a];
+    const [x2, y2] = points[b];
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+}
+
 
     function drawGrid() {
       ctx.strokeStyle = "#222";
@@ -152,9 +164,11 @@
       const x = (Math.random() - 0.5) * 10;
       const y = (Math.random() - 0.5) * 10;
       obstacles.push({
-        position: [x, y, camera.position[2] + 15],
-        speed: 0.05
-      });
+  position: [x, y, camera.position[2] + 15],
+  speed: 0.05,
+  color: `hsl(${Math.random() * 360}, 100%, 50%)`
+});
+
     }
 
     function updateCameraMovement() {
@@ -193,7 +207,8 @@ function draw() {
   for (let i = 0; i < obstacles.length; i++) {
     const ob = obstacles[i];
     ob.position[2] -= ob.speed;
-    drawCube(ob.position, 0.3, "#a00"); // Darker red for obstacles
+    drawCube(ob.position, 0.3, ob.color);
+
 
     // Collision with player
     if (Math.abs(ob.position[0] - camera.position[0]) < player.size &&
@@ -223,7 +238,8 @@ function draw() {
     function drawCrosshair() {
   const centerX = width / 2;
   const centerY = height / 2;
-  ctx.strokeStyle = "white";
+ctx.strokeStyle = `hsl(${(Date.now()/10)%360}, 100%, 70%)`;
+
   ctx.beginPath();
   ctx.moveTo(centerX - 5, centerY);
   ctx.lineTo(centerX + 5, centerY);
@@ -239,18 +255,32 @@ function draw() {
 let enemies = [];
 
 canvas.addEventListener("click", () => {
-  // Shoot a projectile from camera forward
-  const dir = [
-    Math.sin(camera.rotation[1]),
-    Math.sin(camera.rotation[0]),
-    Math.cos(camera.rotation[1])
+  const yaw = camera.rotation[1];
+  const pitch = camera.rotation[0];
+
+  const dx = Math.sin(yaw) * Math.cos(pitch);
+  const dy = Math.sin(pitch);
+  const dz = Math.cos(yaw) * Math.cos(pitch); // ✅ removed the negative
+
+  const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  const dir = [dx / length, dy / length, dz / length];
+
+  // Start position: slightly further to prevent clipping
+  const offset = 1.5;
+  const startPos = [
+    camera.position[0] + dir[0] * offset,
+    camera.position[1] + dir[1] * offset,
+    camera.position[2] + dir[2] * offset
   ];
+
   projectiles.push({
-    position: [...camera.position],
+    position: startPos,
     direction: dir,
     speed: 0.3
   });
 });
+
+
 
 // Enemy spawn (similar to obstacles but smarter)
 function spawnEnemy() {
@@ -268,12 +298,12 @@ setInterval(() => {
 
 function updateEnemies() {
   for (const enemy of enemies) {
-    // Vector to player
+    
     let dx = camera.position[0] - enemy.position[0];
     let dy = camera.position[1] - enemy.position[1];
     let dz = camera.position[2] - enemy.position[2];
 
-    // Normalize direction
+    
     const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
     if (length > 0) {
       dx /= length;
@@ -281,21 +311,23 @@ function updateEnemies() {
       dz /= length;
     }
 
-    // Move enemy toward player
+    
     enemy.position[0] += dx * enemy.speed;
     enemy.position[1] += dy * enemy.speed;
     enemy.position[2] += dz * enemy.speed;
 
-    // Draw enemy in red or different color
-    drawCube(enemy.position, 0.4, "red");
+  
+    const hue = ((enemy.position[0] + enemy.position[2]) * 20) % 360;
+drawCube(enemy.position, 0.4, `hsl(${hue}, 100%, 50%)`);
 
-    // Check collision with player
+
+  
     if (Math.abs(camera.position[0] - enemy.position[0]) < player.size &&
     Math.abs(camera.position[1] - enemy.position[1]) < player.size &&
     Math.abs(camera.position[2] - enemy.position[2]) < player.size){
 
       gameOver = true;
-      alert("💥 Game Over! You were caught by an enemy! Score: " + score);
+      alert("Game Over! You were caught by an enemy! Score: " + score);
       return;
     }
   }
@@ -309,7 +341,9 @@ function updateProjectiles() {
     p.position[2] += p.direction[2] * p.speed;
 
     // Draw projectile as small cube or dot
-    drawCube(p.position, 0.1, "yellow");
+    const hue = (Date.now() / 5) % 360;
+drawCube(p.position, 0.1, `hsl(${hue}, 100%, 60%)`);
+
 
     // Remove if too far
     if (p.position[2] > camera.position[2] + 30) {
@@ -331,6 +365,22 @@ function updateProjectiles() {
     }
   }
 }
+function applyFogColor(baseColor, depth, maxDepth = 30, fogColor = [0, 0, 0]) {
+  const fogFactor = Math.min(1, depth / maxDepth);
+
+  const temp = document.createElement("div");
+  temp.style.color = baseColor;
+  document.body.appendChild(temp);
+  const rgb = getComputedStyle(temp).color.match(/\d+/g).map(Number);
+  document.body.removeChild(temp);
+
+  const r = Math.round(rgb[0] * (1 - fogFactor) + fogColor[0] * fogFactor);
+  const g = Math.round(rgb[1] * (1 - fogFactor) + fogColor[1] * fogFactor);
+  const b = Math.round(rgb[2] * (1 - fogFactor) + fogColor[2] * fogFactor);
+
+  return `rgb(${r},${g},${b})`;
+}
+
 
     draw();
   </script>
