@@ -7,14 +7,14 @@
     body {
   margin: 0;
   overflow: hidden;
-  background: linear-gradient(to bottom, #001d3d, #000000);
+  background: linear-gradient(to bottom, #001d3d, white);
 
 }
 
     canvas {
       display: block;
       margin: 0 auto;
-      background: black;
+      background: white;
     }
   </style>
 </head>
@@ -127,16 +127,16 @@
       ctx.strokeStyle = "#222";
       ctx.lineWidth = 1;
 
-      for (let i = -5; i <= 5; i++) {
-        const p1 = project([i, -5, 0]);
-        const p2 = project([i, 5, 0]);
+      for (let i = -100; i <= 100; i++) {
+        const p1 = project([i, -100, 0]);
+        const p2 = project([i, 100, 0]);
         ctx.beginPath();
         ctx.moveTo(...p1);
         ctx.lineTo(...p2);
         ctx.stroke();
 
-        const p3 = project([-5, i, 0]);
-        const p4 = project([5, i, 0]);
+        const p3 = project([-100, i, 0]);
+        const p4 = project([100, i, 0]);
         ctx.beginPath();
         ctx.moveTo(...p3);
         ctx.lineTo(...p4);

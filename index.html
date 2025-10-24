@@ -234,8 +234,10 @@
                         localStorage.setItem('loggedInUser', username);
                         showProtectedContent();
                         if (window.isParentApproved()) {
+                          document.getElementById("3dgame").style.display = "block";
                           document.getElementById("cowboy").style.display = "block";
                         } else {
+                          document.getElementById("3dgame").style.display = "none";
                           document.getElementById("cowboy").style.display = "none";
                         }
 
@@ -394,7 +396,7 @@
                 <button onclick="gvc()">
                     ascii translator
                 </button>
-                <button onclick="changeIframeSource('three.html')">
+                <button onclick="changeIframeSource('three.html')" id="3dgame">
                     3d game 1
                 </button>
 
