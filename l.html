@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>3D Life Simulation – Villagers Build Structures</title>
+<style>
+body { margin: 0; overflow: hidden; background: black; }
+canvas { display:block; margin:auto; background: linear-gradient(#66aaff, #004); }
+</style>
+</head>
+<body>
+<canvas id="canvas" width="900" height="700"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const W = canvas.width, H = canvas.height;
+// ===== TERRAIN =====
+const terrain = [];
+const terrainSize = 40;
+for(let x=-terrainSize; x<=terrainSize; x++){
+  terrain[x] = [];
+  for(let z=-terrainSize; z<=terrainSize; z++){
+    const h = Math.sin(x*0.3)*0.3 + Math.cos(z*0.3)*0.3 + Math.random()*0.1;
+    terrain[x][z] = h; // store height
+  }
+}
+
+// helper to get terrain height at position
+function getHeight(x,z){
+  const xi = Math.floor(x), zi = Math.floor(z);
+  if(terrain[xi] && terrain[xi][zi] !== undefined) return terrain[xi][zi];
+  return 0;
+}
+
+// ===== CAMERA & CONTROLS =====
+let camera = { pos:[0,1,-6], rot:[0,0] };
+const keys = {};
+document.addEventListener("keydown", e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener("keyup", e=>keys[e.key.toLowerCase()]=false);
+canvas.addEventListener("click", ()=>canvas.requestPointerLock());
+document.addEventListener("mousemove", e=>{
+  if(document.pointerLockElement===canvas){
+    camera.rot[1] += e.movementX * 0.002;
+    camera.rot[0] -= e.movementY * 0.002;
+    camera.rot[0] = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rot[0]));
+  }
+});
+
+// ===== 3D PROJECTION =====
+function project([x,y,z]){
+  let [cx,cy,cz]=camera.pos;
+  x-=cx; y-=cy; z-=cz;
+  const [rx,ry]=camera.rot;
+  let cosY=Math.cos(-ry), sinY=Math.sin(-ry);
+  let nx=z*sinY+x*cosY;
+  let nz= z*cosY-x*sinY;
+  x=nx; z=nz;
+  let cosX=Math.cos(-rx), sinX=Math.sin(-rx);
+  let ny=y*cosX-z*sinX;
+  nz=y*sinX+z*cosX;
+  y=-ny; z=-nz;
+  const scale=400/(z+6);
+  return [x*scale+W/2, y*scale+H/2];
+}
+
+// ===== BASIC SHAPES =====
+function drawCube(pos,size,color){
+  const s=size*2;
+  const pts=[
+    [-s,-s,-s],[s,-s,-s],[s,s,-s],[-s,s,-s],
+    [-s,-s,s],[s,-s,s],[s,s,s],[-s,s,s]
+  ].map(([x,y,z])=>project([pos[0]+x,pos[1]+y,pos[2]+z]));
+  const edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  ctx.strokeStyle=color; ctx.lineWidth=2;
+  for(const [a,b] of edges){
+    ctx.beginPath(); ctx.moveTo(...pts[a]); ctx.lineTo(...pts[b]); ctx.stroke();
+  }
+}
+
+// ===== HUMAN DRAWING =====
+function rotateY([x,y,z],a){const c=Math.cos(a),s=Math.sin(a);return [x*c-z*s,y,x*s+z*c];}
+function drawBone(p1,p2,color="white",w=2){
+  const [sx1,sy1]=project(p1),[sx2,sy2]=project(p2);
+  ctx.strokeStyle=color;ctx.lineWidth=w;
+  ctx.beginPath();ctx.moveTo(sx1,sy1);ctx.lineTo(sx2,sy2);ctx.stroke();
+}
+
+function drawHuman(pos=[0,0,0],scale=1,rotY=0,color="white",t=0){
+  // ===== BODY PROPORTIONS =====
+  const headH=0.25*scale, bodyH=0.8*scale, legH=0.7*scale, armL=0.6*scale;
+  const totalH=headH+bodyH+legH;
+
+  // Walking animation
+  const legSwing=Math.sin(t*5)*0.3;
+  const armSwing=Math.sin(t*5+Math.PI)*0.3;
+
+  // Base world position
+  const base=[pos[0],pos[1]+legH,pos[2]];
+
+  // === TORSO ===
+  const chest=[0,bodyH*0.5,0];
+  const shoulders=[0,bodyH,0];
+  const hips=[0,0,0];
+  const torsoTop=rotateY([0,bodyH,0],rotY).map((v,i)=>v+base[i]);
+  const torsoBottom=rotateY([0,0,0],rotY).map((v,i)=>v+base[i]);
+  drawBone(torsoTop,torsoBottom,color,6);
+
+  // === ARMS ===
+  const lS=rotateY([-0.25*scale,bodyH,0],rotY).map((v,i)=>v+base[i]);
+  const rS=rotateY([0.25*scale,bodyH,0],rotY).map((v,i)=>v+base[i]);
+  const lH=rotateY([-0.25*scale,bodyH-0.6*scale,armL*Math.sin(armSwing)],rotY).map((v,i)=>v+base[i]);
+  const rH=rotateY([0.25*scale,bodyH-0.6*scale,-armL*Math.sin(armSwing)],rotY).map((v,i)=>v+base[i]);
+  drawBone(lS,lH,color,3);
+  drawBone(rS,rH,color,3);
+
+  // === LEGS ===
+  const lHip=rotateY([-0.15*scale,0,0],rotY).map((v,i)=>v+base[i]);
+  const rHip=rotateY([0.15*scale,0,0],rotY).map((v,i)=>v+base[i]);
+  const lF=rotateY([-0.15*scale,-legH*Math.cos(legSwing),legH*Math.sin(legSwing)],rotY).map((v,i)=>v+base[i]);
+  const rF=rotateY([0.15*scale,-legH*Math.cos(-legSwing),legH*Math.sin(-legSwing)],rotY).map((v,i)=>v+base[i]);
+  drawBone(lHip,lF,color,4);
+  drawBone(rHip,rF,color,4);
+
+  // === HEAD ===
+  const headCenter=rotateY([0,bodyH+headH*1.2,0],rotY).map((v,i)=>v+base[i]);
+  const [hx,hy]=project(headCenter);
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.arc(hx,hy,6*scale,0,Math.PI*2);
+  ctx.fill();
+
+  // === Face tone (lighter highlight)
+  ctx.fillStyle="rgba(255,255,255,0.3)";
+  ctx.beginPath();
+  ctx.arc(hx-2,hy-2,3*scale,0,Math.PI*2);
+  ctx.fill();
+}
+
+
+// ===== ENTITIES =====
+class Food { constructor(x,z){ this.pos=[x,0,z]; } }
+class Structure {
+  constructor(x,z,tribe,type="hut"){
+    this.pos=[x,0,z]; this.tribe=tribe;
+    this.color=(tribe==="red")?"#aa4444":"#44aa44";
+  }
+}
+class Camp {
+  constructor(x,z,tribe){
+   this.pos = [x,getHeight(x,z),z];
+
+    this.tribe=tribe;
+    this.color=tribe==="red"?"darkred":"darkgreen";
+    this.structures=[];
+  }
+}
+  class Tree {
+  constructor(x,z){
+    this.pos=[x,getHeight(x,z),z];
+    this.height=0.8+Math.random()*0.5;
+  }
+}
+class Rock {
+  constructor(x,z){
+    this.pos=[x,getHeight(x,z),z];
+    this.size=0.3+Math.random()*0.2;
+  }
+}
+class Creature {
+  constructor(x,z,tribe="red",isPlayer=false,home=null){
+    this.pos=[x,-0.1,z];
+    this.energy=100;
+    this.tribe=tribe;
+    this.color=tribe==="red"?"crimson":"lime";
+    this.isPlayer=isPlayer;
+    this.cooldown=0;
+    this.home=home;
+    this.rotationY=0;
+    this.lastPos=[x,z];
+  }
+
+
+  update(world){
+    const dt=1;
+    if(this.isPlayer){
+      const speed=0.1,yaw=camera.rot[1];
+      if(keys["w"]){this.pos[0]-=Math.sin(yaw)*speed;this.pos[2]-=Math.cos(yaw)*speed;}
+      if(keys["s"]){this.pos[0]+=Math.sin(yaw)*speed;this.pos[2]+=Math.cos(yaw)*speed;}
+      if(keys["a"]){this.pos[0]-=Math.cos(yaw)*speed;this.pos[2]+=Math.sin(yaw)*speed;}
+      if(keys["d"]){this.pos[0]+=Math.cos(yaw)*speed;this.pos[2]-=Math.sin(yaw)*speed;}
+      const back=1.5,height=1.0;
+      camera.pos=[this.pos[0]-Math.sin(camera.rot[1])*back,this.pos[1]+height,this.pos[2]-Math.cos(camera.rot[1])*back];
+      return;
+    }
+
+    // Villager AI
+    let nearest=null,dist2=1000;
+    for(let f of world.food){
+      const dx=f.pos[0]-this.pos[0],dz=f.pos[2]-this.pos[2];
+      const d=dx*dx+dz*dz;if(d<dist2){dist2=d;nearest=f;}
+    }
+
+    if(Math.random()<0.001 && this.home && this.home.structures.length<10){
+      const a=Math.random()*Math.PI*2,d=0.8+Math.random()*2.5;
+      const bx=this.home.pos[0]+Math.cos(a)*d,bz=this.home.pos[2]+Math.sin(a)*d;
+      world.structures.push(new Structure(bx,bz,this.tribe,"hut"));
+      this.energy-=5;this.cooldown=10000;
+    }
+
+    const hx=this.home.pos[0],hz=this.home.pos[2];
+    const dxh=hx-this.pos[0],dzh=hz-this.pos[2];
+    const dh=Math.sqrt(dxh*dxh+dzh*dzh);
+
+    if(this.energy<40&&dh>0.5){
+      this.pos[0]+=dxh/dh*0.03;this.pos[2]+=dzh/dh*0.03;
+    }else if(nearest&&dist2<25){
+      const dx=nearest.pos[0]-this.pos[0],dz=nearest.pos[2]-this.pos[2];
+      const len=Math.sqrt(dx*dx+dz*dz)+0.001;
+      this.pos[0]+=dx/len*0.03;this.pos[2]+=dz/len*0.03;
+    }else{
+      this.pos[0]+=(Math.random()-0.5)*2.02;
+      this.pos[2]+=(Math.random()-0.5)*2.02;
+    }
+
+    // eat
+    for(let f of world.food){
+      const dx=f.pos[0]-this.pos[0],dz=f.pos[2]-this.pos[2];
+      if(dx*dx+dz*dz<0.3){f.eaten=true;this.energy=Math.min(120,this.energy+40);}
+    }
+
+    this.energy-=0.02*dt;if(this.cooldown>0)this.cooldown--;
+
+    // reproduction
+    if(world.creatures.length+world.toAdd.length<80&&this.energy>90&&this.cooldown<=0){
+      for(let c of world.creatures){
+        if(c!==this&&c.tribe===this.tribe){
+          const dx=c.pos[0]-this.pos[0],dz=c.pos[2]-this.pos[2];
+          if(dx*dx+dz*dz<1&&Math.random()<0.05){
+            world.toAdd.push(new Creature(this.home.pos[0]+Math.random()-0.5,this.home.pos[2]+Math.random()-0.5,this.tribe,false,this.home));
+            this.energy-=30;c.energy-=30;this.cooldown=200;
+          }
+        }
+      }
+    }
+
+    // Facing direction
+    const dx=this.pos[0]-this.lastPos[0],dz=this.pos[2]-this.lastPos[1];
+    if(Math.abs(dx)+Math.abs(dz)>0.001)this.rotationY=Math.atan2(dx,dz);
+    this.lastPos=[this.pos[0],this.pos[2]];
+  }
+}
+
+// ===== WORLD SETUP =====
+const world={player:new Creature(0,0,"cyan",true),creatures:[],food:[],toAdd:[],camps:[],structures:[]};
+const campRed=new Camp(-10,0,"red"),campGreen=new Camp(10,0,"green");
+world.camps.push(campRed,campGreen);
+for(let i=0;i<10;i++)world.creatures.push(new Creature(campRed.pos[0]+Math.random()-0.5,campRed.pos[2]+Math.random()-0.5,"red",false,campRed));
+for(let i=0;i<10;i++)world.creatures.push(new Creature(campGreen.pos[0]+Math.random()-0.5,campGreen.pos[2]+Math.random()-0.5,"green",false,campGreen));
+
+let time=0;
+
+// ===== MAIN LOOP =====
+function loop(){
+  ctx.clearRect(0,0,W,H);
+  // Draw terrain
+for(let x=-terrainSize; x<terrainSize; x+=1){
+  for(let z=-terrainSize; z<terrainSize; z+=1){
+    const h = terrain[x][z];
+    const [sx,sy] = project([x,h,z]);
+    const color = h > 0.3 ? "#558844" : h > 0 ? "#447744" : "#335533";
+    ctx.fillStyle = color;
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+}
+
+  time+=0.01;
+  const light=(Math.sin(time)+1)/2;
+
+  const gradient=ctx.createLinearGradient(0,H*0.5,0,H);
+  gradient.addColorStop(0,`rgba(0,0,0,${0.0+(0.5-light)*0.4})`);
+  gradient.addColorStop(1,`rgba(0,0,0,${0.5+(0.5-light)*0.4})`);
+  ctx.fillStyle=gradient;ctx.fillRect(0,H*0.5,W,H/2);
+
+  if(Math.random()<0.02)world.food.push(new Food(Math.random()*10-5,Math.random()*10-5));
+
+  world.player.update(world);
+  for(let c of world.creatures)c.update(world);
+  world.food=world.food.filter(f=>!f.eaten);
+  world.creatures=world.creatures.filter(c=>c.energy>0||c.isPlayer);
+  world.creatures.push(...world.toAdd);world.toAdd=[];
+
+  ctx.strokeStyle="rgba(100,100,255,0.3)";
+  for(let x=-10;x<=10;x++){
+    const [sx1,sy1]=project([x,-0.1,-10]),[sx2,sy2]=project([x,-0.1,10]);
+    ctx.beginPath();ctx.moveTo(sx1,sy1);ctx.lineTo(sx2,sy2);ctx.stroke();
+  }
+  for(let z=-10;z<=10;z++){
+    const [sx1,sy1]=project([-10,-0.1,z]),[sx2,sy2]=project([10,-0.1,z]);
+    ctx.beginPath();ctx.moveTo(sx1,sy1);ctx.lineTo(sx2,sy2);ctx.stroke();
+  }
+
+  for(let camp of world.camps)drawCube(camp.pos,0.8,camp.color);
+  for(let s of world.structures)drawCube(s.pos,0.6,s.color);
+  for(let f of world.food)drawCube(f.pos,0.1,"yellow");
+
+  for(let c of world.creatures)drawHuman(c.pos,0.6,c.rotationY,c.color,time+c.pos[0]);
+  // draw player too
+  drawHuman(world.player.pos,0.7,camera.rot[1],"cyan",time);
+
+  ctx.fillStyle="white";ctx.font="16px monospace";
+  ctx.fillText(`Creatures: ${world.creatures.length} | Structures: ${world.structures.length} | Food: ${world.food.length}`,20,30);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
