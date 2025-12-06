@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Hybrid Scratch Engine - Part 1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="m" style="display:none" id="m">
+        <input id="nameee" placeholder="name of custom block">
+        <button onclick="createCustomBlock(document.getElementById('nameee').value)">ok</button>
+    </div>
+    <div id="toolbox">
+        <h2>Blocks</h2>
+        <div class="block stack" data-type="move" draggable="true">
+            move <input type="number" class="num" value="10"> steps
+        </div>
+        <div class="block stack" data-type="turn" draggable="true">
+            turn <input type="number" class="num" value="15"> degrees
+        </div>
+        <div class="block cblock repeat" data-type="repeat" draggable="true">
+            repeat <input type="number" class="num" value="10"> times
+            <div class="substack droptarget"></div>
+        </div>
+        <div class="block cblock forever" data-type="forever" draggable="true">
+            forever
+            <div class="substack droptarget"></div>
+        </div>
+        <div class="block cblock if" data-type="if" draggable="true">
+            if <input type="text" class="cond" value="true">
+            <div class="substack droptarget"></div>
+        </div>
+        <div class="block cblock ifelse" data-type="ifelse" draggable="true">
+            if <input type="text" class="cond" value="true">
+            <div class="substack droptarget"></div>
+            else
+            <div class="substack droptarget"></div>
+        </div>
+        <button onclick="document.getElementById('m').style.display='block';">create custom block</button>
+    </div>
+
+    <div id="workspace">
+        <h2>Script</h2>
+        <div id="script-area" class="droptarget"></div>
+        <button id="run">Run</button>
+        <button id="clear">Clear</button>
+        <button id="save">Save</button>
+    </div>
+
+    <div id="stage-container">
+        <canvas id="stage" width="480" height="360"></canvas>
+    </div>
+    <script src="engine-advanced.min.js"></script>
+    <script>
+        //import{executeBlock}from'./engine-advanced.min.js';
+
+////////////////////////////////////////
+// GLOBALS
+////////////////////////////////////////
+let dragged = null;
+let currentDrop = null;
+////////////////////////////////////////
+// EXECUTE BLOCK
+////////////////////////////////////////
+
+
+////////////////////////////////////////
+// SPRITE SYSTEM
+////////////////////////////////////////
+
+
+
+
+////////////////////////////////////////
+// CANVAS STAGE
+////////////////////////////////////////
+
+const ctx = canvas.getContext("2d");
+
+function renderStage() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let s of sprites) {
+        s.draw(ctx);
+    }
+    requestAnimationFrame(renderStage);
+}
+
+renderStage();
+
+////////////////////////////////////////
+// DRAG & DROP BLOCKS
+////////////////////////////////////////
+document.addEventListener("dragstart", (e) => {
+    const block = e.target.closest(".block");
+    if (!block) return;
+    dragged = block.cloneNode(true);
+    dragged.classList.add("clone");
+    dragged.style.opacity = "0.5";
+});
+
+document.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const target = e.target.closest(".droptarget");
+    if (target) currentDrop = target;
+});
+
+document.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (!dragged || !currentDrop) return;
+    const copy = dragged.cloneNode(true);
+    copy.classList.remove("clone");
+    copy.removeAttribute("id");
+    copy.setAttribute("draggable", "true");
+    copy.querySelectorAll("input").forEach(i => i.disabled = false);
+    currentDrop.appendChild(copy);
+    dragged = null;
+    currentDrop = null;
+});
+
+////////////////////////////////////////
+// SERIALIZER
+////////////////////////////////////////
+function serializeBlock(block) {
+    const type = block.dataset.type;
+    let obj = { type };
+    const inputs = block.querySelectorAll("input");
+    if (inputs.length) obj.inputs = [...inputs].map(i=>i.value);
+    const substacks = block.querySelectorAll(":scope > .substack");
+    if (substacks.length) obj.substacks = [...substacks].map(stack => serializeStack(stack));
+    return obj;
+}
+
+function serializeStack(container) {
+    return [...container.children].filter(c => c.classList.contains("block")).map(serializeBlock);
+}
+
+function saveScript() {
+    const root = document.getElementById("script-area");
+    localStorage.setItem("scratchScript", JSON.stringify(serializeStack(root)));
+    alert("Saved!");
+}
+
+function loadScript() {
+    const json = localStorage.getItem("scratchScript");
+    if (!json) return;
+    const data = JSON.parse(json);
+    const root = document.getElementById("script-area");
+    root.innerHTML = "";
+    rebuildStack(root, data);
+}
+
+function rebuildBlock(obj) {
+    let tpl = document.querySelector(`.block[data-type="${obj.type}"]`);
+    let block = tpl.cloneNode(true);
+    block.removeAttribute("id");
+    if (obj.inputs) {
+        const inputs = block.querySelectorAll("input");
+        obj.inputs.forEach((v,i)=>inputs[i].value = v);
+    }
+    if (obj.substacks) {
+        const subs = block.querySelectorAll(":scope > .substack");
+        obj.substacks.forEach((st,i)=>rebuildStack(subs[i], st));
+    }
+    return block;
+}
+
+function rebuildStack(container, arr) {
+    arr.forEach(obj=>container.appendChild(rebuildBlock(obj)));
+}
+
+////////////////////////////////////////
+// BUTTONS
+////////////////////////////////////////
+document.getElementById("clear").onclick = () => document.getElementById("script-area").innerHTML = "";
+document.getElementById("save").onclick = saveScript;
+loadScript();
+
+////////////////////////////////////////
+// VM EXECUTION
+////////////////////////////////////////
+function runScript() {
+    const rootData = serializeStack(document.getElementById("script-area"));
+    executeStack(rootData);
+}
+
+function executeStack(stack) {
+    for (let block of stack) executeBlock(block);
+}
+
+
+
+document.getElementById("run").onclick = runScript;
+
+    </script>
+</body>
+</html>
