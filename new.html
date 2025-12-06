@@ -84,7 +84,7 @@
         3D GAME (CANVAS)
     ============================-->
     <div id="game3D">
-        <canvas id="canvas3D" width="900" height="600"></canvas>
+        <canvas tabindex="0" id="canvas3D" width="900" height="600"></canvas>
         <div id="stats3D"></div>
         <button id="wallBtn3D" onclick="buildWall3D()">Build Wall</button>
     </div>
@@ -96,18 +96,6 @@
     radius: 0.08,
     color: "gray"
 };
-function drawWeapon(handX, handY, handZ, rotY) {
-    // Weapon points forward relative to rotation
-    const dx = Math.sin(rotY) * weapon.length;
-    const dz = Math.cos(rotY) * weapon.length;
-
-    drawCylinder(
-        handX, handY, handZ,
-        handX + dx, handY, handZ + dz,
-        weapon.radius,
-        weapon.color
-    );
-}
 
 /* ================================================================
     SHARED GAME STATE
@@ -126,8 +114,8 @@ const humanoid = {
     leftLeg: {x:-0.2, y:0.4, z:0, length:0.8, radius:0.1, rot:0},
     rightLeg: {x:0.2, y:0.4, z:0, length:0.8, radius:0.1, rot:0}
 };
-function drawCylinder(x1,y1,z1,x2,y2,z2,r,color) {
-    const segments = 20; // smoothness
+function drawCylinder(x1,y1,z1,x2,y2,z2,r,color,segments=8) {
+    
     for(let i=0;i<=segments;i++){
         const t = i/segments;
         const x = x1*(1-t)+x2*t;
@@ -136,6 +124,37 @@ function drawCylinder(x1,y1,z1,x2,y2,z2,r,color) {
         drawSphere(x,y,z,r,color);
     }
 }
+function drawWeapon(handX, handY, handZ, rotY, fire=false) {
+    const dx = Math.sin(rotY) * weapon.length;
+    const dz = Math.cos(rotY) * weapon.length;
+
+    // weapon barrel
+    drawCylinder(
+        handX, handY, handZ,
+        handX + dx, handY, handZ + dz,
+        weapon.radius,
+        weapon.color
+    );
+
+    // muzzle flash (optional small sphere)
+    
+    if(fire)drawSphere(handX + dx, handY, handZ + dz, 0.05, "yellow");
+}
+
+function getWeaponTip(baseX, baseY, baseZ, rotY) {
+    const handX = baseX + Math.sin(rotY) * 0.4;
+const handZ = baseZ + Math.cos(rotY) * 0.4;
+
+    const handY = baseY + humanoid.rightArm.y - humanoid.rightArm.length;
+    
+
+    const muzzleX = handX + Math.sin(rotY) * weapon.length;
+    const muzzleY = handY;
+    const muzzleZ = handZ + Math.cos(rotY) * weapon.length;
+
+    return {x: muzzleX, y: muzzleY, z: muzzleZ};
+}
+
 function drawHumanoid(baseX, baseY, baseZ, rotY, color="skin") {
     const skin = color==="skin" ? "#e0a082" : color;
 
@@ -449,7 +468,8 @@ let canvas3D, ctx3D;
 
 let cam = {
     x:0, y:1.7, z:0,
-    rotY:0
+    rotY:0,
+    rotX:0
 };
 
 let enemy3D = { x: -10, z: -10 };
@@ -505,8 +525,14 @@ document.addEventListener("mousemove", (e) => {
     if (!pointerLocked || mode !== "3D") return;
 
     const sensitivity = 0.002;
-    cam.rotY += e.movementX * sensitivity;
+
+    cam.rotY += e.movementX * sensitivity;      // left/right
+    cam.rotX -= e.movementY * sensitivity;      // up/down  (invert for FPS feel)
+
+    // clamp so player cannot flip upside-down
+    cam.rotX = Math.max(-1.3, Math.min(1.3, cam.rotX));
 });
+
 
 /* -----------------------------
     INIT 3D
@@ -529,13 +555,13 @@ function init3D() {
     update3D();
     setInterval(ai3D, 300);
 }
-function rotateLimb(p1, p2, rotationMatrix) {
+/*function rotateLimb(p1, p2, rotationMatrix) {
     ctx.fillStyle = ctx.createLinearGradient(px1, py1, px2, py2);
 ctx.fillStyle.addColorStop(0, "#e0a082");
 ctx.fillStyle.addColorStop(1, "#c07050");
 ctx.fill();
 
-}
+}*/
 
 function key3D(e) {
     if (!playerAlive || !enemyAlive) return;
@@ -563,26 +589,32 @@ function key3D(e) {
 /* -----------------------------
     PROJECTION
 ----------------------------- */
+function project3D(x, y, z) {
+    let dx = x - cam.x;
+    let dy = y - cam.y;
+    let dz = z - cam.z;
 
-function project3D(x,y,z) {
-    const dx = x - cam.x;
-    const dy = y - cam.y;
-    const dz = z - cam.z;
+    // Y rotation (turn left/right)
+    const sy = Math.sin(cam.rotY), cy = Math.cos(cam.rotY);
+    let rx = dx * cy - dz * sy;
+    let rz = dx * sy + dz * cy;
 
-    const sy = Math.sin(cam.rotY);
-    const cy = Math.cos(cam.rotY);
-
-    const rx = dx * cy - dz * sy;
-    const rz = dx * sy + dz * cy;
+    // X rotation (look up/down)
+    const sx = Math.sin(cam.rotX), cx = Math.cos(cam.rotX);
+    let ry = dy * cx - rz * sx;
+    rz = dy * sx + rz * cx;
 
     if (rz < 0.1) return null;
 
     const scale = 400 / rz;
-    const sx = 450 + rx * scale;
-    const sy2 = 300 - dy * scale;
 
-    return {x:sx, y:sy2, d:rz};
+    return {
+        x: 450 + rx * scale,
+        y: 300 - ry * scale,
+        d: rz
+    };
 }
+
 
 /* -----------------------------
     DRAW TERRAIN (TRIANGLE MESH)
@@ -646,15 +678,27 @@ function shoot3D(key) {
     canShoot = false;
     setTimeout(()=>canShoot=true, shootCooldown);
 
-    let dx=0, dz=0;
-    if (key==="f"||key==="F")   { dx=Math.sin(cam.rotY); dz=Math.cos(cam.rotY); }
-    
+    // Player weapon muzzle position
+    const tip = getWeaponTip(
+        cam.x,
+        getHeight(cam.x, cam.z) + 0.1,
+        cam.z,
+        cam.rotY
+    );
+
+    const dx = Math.sin(cam.rotY);
+    const dz = Math.cos(cam.rotY);
+
     projectiles3D.push({
-        x:cam.x, y:cam.y, z:cam.z,
-        dx, dz,
-        alive:true
+        x: tip.x,
+        y: tip.y,
+        z: tip.z,
+        dx: dx,
+        dz: dz,
+        alive: true
     });
 }
+
 
 function updateProjectiles3D() {
     const spd = 0.7;
@@ -707,20 +751,24 @@ function ai3D() {
 }
 
 function shootEnemy3D() {
-    const dx = cam.x - enemy3D.x;
-    const dz = cam.z - enemy3D.z;
+    const baseY = getHeight(enemy3D.x, enemy3D.z) + 0.1;
+    const tip = getWeaponTip(enemy3D.x, baseY, enemy3D.z, 0); // enemy doesn't rotate yet
+
+    const dx = cam.x - tip.x;
+    const dz = cam.z - tip.z;
     const mag = Math.sqrt(dx*dx + dz*dz);
-    if (mag<0.1) return;
+    if (mag < 0.1) return;
 
     enemyProjectiles3D.push({
-        x:enemy3D.x,
-        y:getHeight(enemy3D.x,enemy3D.z)+1.7,
-        z:enemy3D.z,
-        dx:dx/mag,
-        dz:dz/mag,
-        alive:true
+        x: tip.x,
+        y: tip.y,
+        z: tip.z,
+        dx: dx/mag,
+        dz: dz/mag,
+        alive: true
     });
 }
+
 
 function updateEnemyProjectiles3D() {
     const spd = 0.5;
@@ -755,7 +803,8 @@ function buildWall3D() {
 
 function drawWalls3D() {
     for (let w of walls3D) {
-        drawSphere(w.x, getHeight(w.x,w.z)+1, w.z, 0.7, "brown");
+        w.y=getHeight(w.x,w.z)+1;
+        drawCylinder(w.x, w.y, w.z, w.x+5, w.y, w.z+5,1, "brown");
     }
 }
 
@@ -767,7 +816,9 @@ function update3D() {
     ctx3D.clearRect(0,0,900,600);
 
     drawTerrain();
-    drawHumanoid(enemy3D.x, getHeight(enemy3D.x, enemy3D.z)+0.1, enemy3D.z, 0, "black")
+    const enemyAngle = Math.atan2(cam.x - enemy3D.x, cam.z - enemy3D.z);
+drawHumanoid(enemy3D.x, getHeight(enemy3D.x, enemy3D.z)+0.1, enemy3D.z, enemyAngle, "black");
+
     drawWalls3D();
 
     updateProjectiles3D();
