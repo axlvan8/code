@@ -46,7 +46,12 @@
             border: 4px solid white;
             background: #5d5;
         }
+        .dfs{
+            background-color: #222;
+            color: #222;
+        }
     </style>
+    
 </head>
 
 <body>
@@ -57,10 +62,32 @@
         MODE SELECT MENU
     ============================-->
     <div id="modeMenu">
-        <button onclick="start2D()">Play 2D Version</button>
-        <button onclick="start3D()">Play 3D Version</button>
-    </div>
+        <p id="margin:center">|</p>
+        <button onclick="start2D()">Play 2D Version</button>|
+        <button onclick="start3D()">Play 3D Version</button><br>
+        <p id="margin:center">|</p><button onclick="load()">load</button>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
+        <p id="margin:center">|</p>
 
+    </div>
+    <div id="load">
+        <input id="loady" type="text">
+        <button onclick="load(document.getElementById('loady'))">load</button>
+        <button onclick="document.getElementById('load').style.display='none';document.getElementById('modeMenu').style.display='block'">back</button>
+    </div>
     <!--==========================
         2D GAME (SVG)
     ============================-->
@@ -79,6 +106,16 @@
         <button id="wallBtn2D" onclick="buildWall2D()">Build Wall</button>
     </div>
 
+    <div id="upgradeMenu" style="display:none; margin-top:20px;">
+    <h2>You Win! Upgrade Your Weapon</h2>
+    <button onclick="upgradeWeapon()">Upgrade Weapon</button>
+    <div id="upgradeInfo"></div><p id="p" class="dfs"></p>
+    <button onclick="document.getElementById('p')
+    .textContent = `3d;${weapon.color};${ Math.max(200, weapon.cooldown - 50)};${weapon.damage+1};${weapon.length};${weapon.projectileSpeed+0.1};${weapon.radius};${upgradeLevel}`
+    ;copyToClipboard('p')">save to clipboard</button>
+    <button onclick="const textA=document.getElementById('p').value;
+    const blob=new Blob([textA],{type:'text/plain'});">save as text file</button>
+    </div>
 
     <!--==========================
         3D GAME (CANVAS)
@@ -91,11 +128,40 @@
 
 
 <script>
-    const weapon = {
+    function copyToClipboard(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const text = el.textContent || el.value;
+    if (!text) {
+        alert("Nothing to copy.");
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            
+        })
+        .catch((err) => {
+            console.error("Clipboard error:", err);
+            alert("Failed to copy.");
+        });
+}
+
+    
+    var f=false;
+    var money = 0;
+    
+const weapon = {
     length: 0.5,
     radius: 0.08,
-    color: "gray"
+    color: "#333",
+    damage: 1,
+    projectileSpeed: 0.7,
+    cooldown: 500
 };
+
+let upgradeLevel = 0;
 
 /* ================================================================
     SHARED GAME STATE
@@ -114,16 +180,20 @@ const humanoid = {
     leftLeg: {x:-0.2, y:0.4, z:0, length:0.8, radius:0.1, rot:0},
     rightLeg: {x:0.2, y:0.4, z:0, length:0.8, radius:0.1, rot:0}
 };
-function drawCylinder(x1,y1,z1,x2,y2,z2,r,color,segments=8) {
-    
-    for(let i=0;i<=segments;i++){
-        const t = i/segments;
-        const x = x1*(1-t)+x2*t;
-        const y = y1*(1-t)+y2*t;
-        const z = z1*(1-t)+z2*t;
-        drawSphere(x,y,z,r,color);
+function drawCylinder(x1,y1,z1,x2,y2,z2,r,color){
+    const steps = 6;
+    for(let i=0;i<=steps;i++){
+        const t = i/steps;
+        drawSphere(
+            x1 + (x2-x1)*t,
+            y1 + (y2-y1)*t,
+            z1 + (z2-z1)*t,
+            r,
+            color
+        );
     }
 }
+
 function drawWeapon(handX, handY, handZ, rotY, fire=false) {
     const dx = Math.sin(rotY) * weapon.length;
     const dz = Math.cos(rotY) * weapon.length;
@@ -145,7 +215,8 @@ function getWeaponTip(baseX, baseY, baseZ, rotY) {
     const handX = baseX + Math.sin(rotY) * 0.4;
 const handZ = baseZ + Math.cos(rotY) * 0.4;
 
-    const handY = baseY + humanoid.rightArm.y - humanoid.rightArm.length;
+    const handY = baseY + humanoid.rightArm.y - humanoid.rightArm.length + 0.1;
+
     
 
     const muzzleX = handX + Math.sin(rotY) * weapon.length;
@@ -332,7 +403,7 @@ function buildWall2D() {
 function shoot2D(direction) {
     if (!canShoot) return;
     canShoot = false;
-    setTimeout(()=>canShoot=true, shootCooldown);
+    setTimeout(()=>canShoot=true, weapon.cooldown);
 
     const px = +player2D.getAttribute("cx");
     const py = +player2D.getAttribute("cy");
@@ -366,12 +437,13 @@ function shoot2D(direction) {
         const er = +enemy2D.getAttribute("r");
 
         if ((x-ex)**2 + (y-ey)**2 < (er+5)**2) {
-            enemyHP--;
+            enemyHP-=weapon.damage;
             updateStats2D();
             proj.remove();
             if (enemyHP<=0 && enemyAlive) {
                 enemyAlive = false;
-                alert("You WIN!");
+                onPlayerWin();
+
             }
             return;
         }
@@ -412,7 +484,7 @@ function enemyAI2D() {
 }
 
 function shootEnemy2D() {
-    if (Math.random()<0.95) return; // reduces spam
+    if (Math.random()<0.97) return; // reduces spam
 
     const ex = +enemy2D.getAttribute("cx");
     const ey = +enemy2D.getAttribute("cy");
@@ -445,7 +517,7 @@ function shootEnemy2D() {
         proj.setAttribute("cy", y);
 
         if ((x-px)**2 + (y-py)**2 < (20+5)**2) {
-            playerHP--;
+            playerHP-=weapon.damage;
             updateStats2D();
             proj.remove();
             if (playerHP<=0 && playerAlive) {
@@ -623,8 +695,8 @@ function project3D(x, y, z) {
 function drawTerrain() {
     ctx3D.fillStyle = "#55aa55";
     ctx3D.strokeStyle = "#225522";
-
-    for (let x=-terrainSize; x<terrainSize; x++) {
+    const viewDist = 40;
+    for (let x=-viewDist; x<viewDist; x++) {
         for (let z=-terrainSize; z<terrainSize; z++) {
 
             const h1 = terrain[x][z];
@@ -685,7 +757,7 @@ function shoot3D(key) {
         cam.z,
         cam.rotY
     );
-
+    
     const dx = Math.sin(cam.rotY);
     const dz = Math.cos(cam.rotY);
 
@@ -701,7 +773,7 @@ function shoot3D(key) {
 
 
 function updateProjectiles3D() {
-    const spd = 0.7;
+    const spd = 4;
 
     for (let p of projectiles3D) {
         if (!p.alive) continue;
@@ -720,11 +792,20 @@ function updateProjectiles3D() {
             p.alive=false;
             if (enemyHP<=0 && enemyAlive) {
                 enemyAlive=false;
-                alert("YOU WIN!");
+                onPlayerWin();
+
             }
         }
+    }for (let w of walls3D) {
+    const dx = p.x - w.x;
+    const dz = p.z - w.z;
+    if (dx*dx + dz*dz < 1) {
+        p.alive = false;
+        continue;
     }
+}
 
+    
     projectiles3D = projectiles3D.filter(p=>p.alive);
 }
 
@@ -752,7 +833,9 @@ function ai3D() {
 
 function shootEnemy3D() {
     const baseY = getHeight(enemy3D.x, enemy3D.z) + 0.1;
-    const tip = getWeaponTip(enemy3D.x, baseY, enemy3D.z, 0); // enemy doesn't rotate yet
+    const rot = Math.atan2(cam.x - enemy3D.x, cam.z - enemy3D.z);
+const tip = getWeaponTip(enemy3D.x, baseY, enemy3D.z, rot);
+
 
     const dx = cam.x - tip.x;
     const dz = cam.z - tip.z;
@@ -804,15 +887,18 @@ function buildWall3D() {
 function drawWalls3D() {
     for (let w of walls3D) {
         w.y=getHeight(w.x,w.z)+1;
-        drawCylinder(w.x, w.y, w.z, w.x+5, w.y, w.z+5,1, "brown");
+       drawCylinder(w.x, w.y, w.z, w.x, w.y + w.h, w.z, 0.3, "brown");
+
     }
 }
 
 /* -----------------------------
     UPDATE LOOP (3D)
 ----------------------------- */
-
+var dg=false;
+var gd = 0;
 function update3D() {
+    if(!dg){
     ctx3D.clearRect(0,0,900,600);
 
     drawTerrain();
@@ -825,17 +911,32 @@ drawHumanoid(enemy3D.x, getHeight(enemy3D.x, enemy3D.z)+0.1, enemy3D.z, enemyAng
     updateEnemyProjectiles3D();
 
     for (let p of projectiles3D)
-        drawSphere(p.x, p.y, p.z, 0.3, "red");
+        drawSphere(p.x, p.y, p.z, 0.1, "red");
 
     for (let p of enemyProjectiles3D)
-        drawSphere(p.x, p.y, p.z, 0.3, "purple");
-
+        drawSphere(p.x, p.y, p.z, 0.1, "purple");
+        drawCrosshair()}
     document.getElementById("stats3D").innerHTML =
-        `Player HP: ${playerHP} | Enemy HP: ${enemyHP}`;
-    drawCrosshair();
+        `Player HP: ${playerHP} | Enemy HP: ${enemyHP} | $: ${money}`;
+    
+    
+    if(enemyHP===0&&playerHP!=0){
+        if(f!==true){
+            money+=50;
+        }
+        f=true
 
+        
+       ctx3D.fillStyle = "white";
+ctx3D.fillRect(0,0,900,600);
+ctx3D.fillStyle = "black";
+ctx3D.font = "50px sans-serif";
+ctx3D.fillText("YOU WIN!", 300, 300);
+
+    }
     requestAnimationFrame(update3D);
 }
+
 /* ================================================================
     CROSSHAIR
 ================================================================ */
@@ -858,7 +959,86 @@ function drawCrosshair() {
 
     ctx3D.stroke();
 }
+function onPlayerWin() {
+    document.getElementById("upgradeMenu").style.display = "block";
 
+    document.getElementById("upgradeInfo").innerHTML =
+        `Current Level: ${upgradeLevel}<br>
+        Damage: ${weapon.damage}<br>
+        Fire Rate: ${(1000/weapon.cooldown).toFixed(2)} shots/sec<br>
+        Projectile Speed: ${weapon.projectileSpeed}<br>`;
+}
+function upgradeWeapon() {
+    upgradeLevel++;
+     weapon.damage += 1;
+    weapon.projectileSpeed += 0.1;
+    weapon.cooldown = Math.max(200, weapon.cooldown - 50);
+
+    // Improve stats
+    if(upgradeLevel==2){
+        weapon.length=7.62;
+        weapon.color="#333"
+        weapon.cooldown=1.6;//AK-47
+    }
+   
+    document.getElementById("upgradeInfo").innerHTML =
+        `<b>Upgraded</b><br>
+        Level: ${upgradeLevel}<br>
+        Damage: ${weapon.damage}<br>
+        Fire Rate: ${(1000/weapon.cooldown).toFixed(2)} RPM<br>
+        Projectile Speed: ${weapon.projectileSpeed}`;
+
+    // Hide after upgrade
+    setTimeout(() => {
+        document.getElementById("upgradeMenu").style.display = "none";
+    }, 1500);
+}
+function load(b=""){
+    document.getElementById("modeMenu").style.display = "none";
+    document.getElementById("load").style.display = "block";
+    if(b){
+        if(b.trim()!==""){
+            var kjhg=[];
+            var gjjh=0;
+            var hjhb=false;
+            var ghgf='';
+            for(var i=0;i<b.length;i++){
+                if(b[i]==';'){
+                    hjhb=true;
+                    kjhg.push(ghgf);
+                    ghgf=''
+                    gjjh++
+                }
+                if(b[i]!==';'){
+                    if(!hjhb){
+                        ghgf=ghgf.concat(b[i])
+                    }
+                }
+
+            }
+            for(var j=0;j<kjhg.length;j++){
+                if(j===1){
+                    weapon.color=kjhg[j];
+                }
+                if(j===2){
+                    weapon.cooldown=parseInt(kjhg[j])
+                }
+                if(j===3){
+                    weapon.damage=parseInt(kjhg[j])
+                }
+                if(j===4){
+                    weapon.length=parseInt(kjhg[j])
+                }
+                if(j===5){
+                    weapon.projectileSpeed=parseInt(kjhg[j])
+                }
+
+            }
+        }
+        return;
+    }
+    return;
+}
 </script>
 
 </body>

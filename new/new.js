@@ -236,12 +236,12 @@ function Cb(x1,y1,xvel1,yvel1,d1){
 }
 function cm(m1){
     if(!m1){
-        i1=1;
-        for(var dsdsdss=0;dsdsdss<4;dsdsdss++){
-            controls[i1+4]=controls[i1];
-            controls[i1]=yujhf;
+        
+        for(var i=0;i<4;i++){
+            controls[i+4]=controls[i];
+            controls[1]=yujhf;
             yujhf=false;
-            i1+=1;
+            
         }
         controls[9]=(controls[4]-controls[3]);
         controls[10]=(controls[2]-controls[1]);

@@ -186,7 +186,8 @@
     w.document.title ="wert";
     w.document.close();
 }
-            
+            /*
+                */
         </script>
     
 
@@ -197,7 +198,55 @@
         <button onclick="recallName();">recall name</button><br>
         <button onclick="removeName();">remove name</button><br>
     </fieldset>            
-        
+        <div id="pw">
+      <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Parental Approval Required</h1>
+    <p class="lead">Enter the parental password below to continue. This page runs entirely in your browser (no files uploaded).</p>
+
+    <form id="gate" autocomplete="off" onsubmit="return false;">
+      <label for="reason">Reason (optional)</label>
+      <input id="reason" name="reason" type="text" placeholder="Why is access requested? (optional)" aria-label="Reason for access">
+
+      <label for="pwd">Parental password</label>
+      <div class="row">
+        <input id="pwd" name="pwd" type="password" placeholder="Enter parental password" aria-label="Parental password" required>
+        <button id="toggle" type="button" class="ghost" aria-pressed="false" title="Show / hide">Show</button>
+      </div>
+
+      <div class="actions">
+        <button id="submitBtn" type="button">Submit</button>
+        <button id="clearBtn" type="button" class="ghost">Clear</button>
+      </div>
+
+      <div id="message" class="msg hidden" role="status" aria-live="polite"></div>
+      <div id="meta" class="meta">Attempts left: <span id="attempts">5</span></div>
+    </form>
+
+    <footer>
+      <div class="small">This is a local-only check. For stronger parental control, use OS tools or server-verified checks.</div>
+    </footer>
+  </main>
+
+<script>
+
+</script>
+    </div>
+            </div>
+            <div id="parent-setup" style="padding:12px;border:1px solid #444;max-width:420px;">
+  <h3>Parental controls (setup)</h3>
+  <div id="setup-area">
+    <input id="newParentPwd" type="password" placeholder="Choose parental password" style="width:70%">
+    <button id="setParentBtn">Set Password</button>
+    <p id="setupMsg" style="color:green"></p>
+  </div>
+
+  <div id="auth-area" style="margin-top:10px;">
+    <input id="parentPwd" type="password" placeholder="Enter parental password to unlock" style="width:70%">
+    <button id="verifyBtn">Verify</button>
+    <button id="clearAuthBtn">Clear Approval</button>
+    <p id="authMsg" style="color:red"></p>
+  </div>
+</div>
         <ul contenteditable="true" id="list">
             <li>1</li><li>2</li><li>3</li></ul>
         
@@ -233,13 +282,7 @@
                       if (userData && userData.password === password) {
                         localStorage.setItem('loggedInUser', username);
                         showProtectedContent();
-                        if (window.isParentApproved()) {
-                          document.getElementById("3dgame").style.display = "block";
-                          document.getElementById("cowboy").style.display = "block";
-                        } else {
-                          document.getElementById("3dgame").style.display = "none";
-                          document.getElementById("cowboy").style.display = "none";
-                        }
+                        
 
                         document.getElementById("a").innerHTML = "welcome!, "+username;
                       } else {
@@ -321,55 +364,7 @@
             <h2 id="a"></h2>
             <div id="parental password">
               
-    <div id="pw">
-      <main class="card" role="main" aria-labelledby="title">
-    <h1 id="title">Parental Approval Required</h1>
-    <p class="lead">Enter the parental password below to continue. This page runs entirely in your browser (no files uploaded).</p>
-
-    <form id="gate" autocomplete="off" onsubmit="return false;">
-      <label for="reason">Reason (optional)</label>
-      <input id="reason" name="reason" type="text" placeholder="Why is access requested? (optional)" aria-label="Reason for access">
-
-      <label for="pwd">Parental password</label>
-      <div class="row">
-        <input id="pwd" name="pwd" type="password" placeholder="Enter parental password" aria-label="Parental password" required>
-        <button id="toggle" type="button" class="ghost" aria-pressed="false" title="Show / hide">Show</button>
-      </div>
-
-      <div class="actions">
-        <button id="submitBtn" type="button">Submit</button>
-        <button id="clearBtn" type="button" class="ghost">Clear</button>
-      </div>
-
-      <div id="message" class="msg hidden" role="status" aria-live="polite"></div>
-      <div id="meta" class="meta">Attempts left: <span id="attempts">5</span></div>
-    </form>
-
-    <footer>
-      <div class="small">This is a local-only check. For stronger parental control, use OS tools or server-verified checks.</div>
-    </footer>
-  </main>
-
-<script>
-
-</script>
-    </div>
-            </div>
-            <div id="parent-setup" style="padding:12px;border:1px solid #444;max-width:420px;">
-  <h3>Parental controls (setup)</h3>
-  <div id="setup-area">
-    <input id="newParentPwd" type="password" placeholder="Choose parental password" style="width:70%">
-    <button id="setParentBtn">Set Password</button>
-    <p id="setupMsg" style="color:green"></p>
-  </div>
-
-  <div id="auth-area" style="margin-top:10px;">
-    <input id="parentPwd" type="password" placeholder="Enter parental password to unlock" style="width:70%">
-    <button id="verifyBtn">Verify</button>
-    <button id="clearAuthBtn">Clear Approval</button>
-    <p id="authMsg" style="color:red"></p>
-  </div>
-</div>
+    
 
 <script>
 
@@ -404,6 +399,10 @@
                 </button>
                 <ul id="projectList"></ul>
             </div>
+            <p>free js</p><br>
+           
+<a download="core.min.js.js">Download core.min.js</a>|<a href="core.min.js">view file</a>
+
             <p>play fullscreen</p>
             <a href="editor.html">Tyty Editor</a>|
             <a href="test2.html">FlappyBird</a>|

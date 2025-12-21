@@ -104,7 +104,7 @@ function bin(binaryStr) {
 
     output.textContent = result;
 }
-function copyToClipboard(elementId) {
+export function copyToClipboard(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
