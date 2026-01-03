@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scratch Raycaster Clone with Pointer Lock</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    cursor: crosshair; /* shows crosshair when pointer locked */
+  }
+  canvas {
+    image-rendering: pixelated;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = 640;
+canvas.height = 480;
+
+const FOV = Math.PI/3;
+const RES = 4;
+const RAYS = canvas.width / RES;
+const STEP = 0.02;
+
+const entities = [
+  { x: 2.5, y: 2, color: "red" },
+  { x: 9, y: 2, color: "blue" },
+];
+
+const map = [
+  "############################################",
+  "#..........................................#",
+  "#....#####################################.#",
+  "#....#.....................................#",
+  "#....#.....................................#",
+  "#....#...........#.....###################.#",
+  "#....#...........#.......................#.#",
+  "#....#...........#.....#.................#.#",
+  "#....#...........#.....#.........####....#.#",
+  "#....#...........#.....#........######...#.#",
+  "#....#...........#.....#.........####....#.#",
+  "#................#.....#.................#.#",
+  "#....#...........#.....#.................#.#",
+  "#....#...........#.....#...................#",
+  "#....#...........#.....#...................#",
+  "#....#...........#.........................#",
+  "#....#...........#.....######..#####.......#",
+  "#....#...........#.....#...........#.......#",
+  "#....#...........#.....#############.......#",
+  "#....#.....................................#",
+  "#....########################..............#",
+  "#..........................................#",
+  "############################################"
+];
+
+const player = {
+  x: 3,
+  y: 2,
+  angle: 0,
+  speed: 0.05,
+  turnSpeed: 0.03
+};
+
+const keys = {};
+addEventListener("keydown", e => keys[e.key] = true);
+addEventListener("keyup", e => keys[e.key] = false);
+
+// ===== POINTER LOCK =====
+canvas.addEventListener('click', () => canvas.requestPointerLock());
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) {
+    document.addEventListener('mousemove', onMouseMove);
+  } else {
+    document.removeEventListener('mousemove', onMouseMove);
+  }
+});
+
+function onMouseMove(e) {
+  player.angle += e.movementX * 0.002; // mouse sensitivity
+}
+
+// ===== HELPERS =====
+function isWall(x, y) {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (my < 0 || my >= map.length) return true;
+  if (mx < 0 || mx >= map[0].length) return true;
+  return map[my][mx] === "#";
+}
+
+// ===== PLAYER MOVEMENT =====
+function updatePlayer() {
+  let move = 0;
+  let strafe = 0;
+
+  if (keys["w"] || keys["ArrowUp"]) move = player.speed;
+  if (keys["s"] || keys["ArrowDown"]) move = -player.speed;
+  if (keys["a"]) strafe = -player.speed;
+  if (keys["d"]) strafe = player.speed;
+
+  const nx = player.x + Math.cos(player.angle) * move - Math.sin(player.angle) * strafe;
+  const ny = player.y + Math.sin(player.angle) * move + Math.cos(player.angle) * strafe;
+
+  if (!isWall(nx, player.y)) player.x = nx;
+  if (!isWall(player.x, ny)) player.y = ny;
+}
+
+// ===== RAYCAST =====
+function castRay(angle) {
+  let x = player.x;
+  let y = player.y;
+  while (!isWall(x, y)) {
+    x += Math.cos(angle) * STEP;
+    y += Math.sin(angle) * STEP;
+  }
+  return Math.hypot(x - player.x, y - player.y);
+}
+
+// ===== RENDER =====
+function renderGroundEntities() {
+  for (const e of entities) {
+    const dx = e.x - player.x;
+    const dy = e.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    const angle = Math.atan2(dy, dx) - player.angle;
+
+    if (Math.cos(angle) <= 0) continue;
+
+    const screenX = canvas.width / 2 + Math.tan(angle) * (canvas.width / 2) / Math.tan(FOV/2);
+    const groundY = canvas.height / 2 + 50;
+    const size = 20 / dist * 50;
+
+    ctx.fillStyle = e.color;
+    ctx.fillRect(screenX - size/2, groundY - size, size, size/2);
+  }
+}
+
+function render() {
+  ctx.fillStyle = "black";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  renderGroundEntities();
+
+  for (let i=0;i<RAYS;i++) {
+    const rayAngle = player.angle - FOV/2 + (i/RAYS)*FOV;
+    let dist = castRay(rayAngle);
+
+    dist *= Math.cos(rayAngle - player.angle); // remove fish-eye
+    dist = Math.max(dist, 0.1);
+
+    const height = canvas.height*0.5 / dist;
+    const shade = 30 + Math.min(50, 50 / dist);
+
+    ctx.fillStyle = `hsl(30, 100%, ${shade}%)`;
+    ctx.fillRect(i*RES, canvas.height/2 - height, RES, height*2);
+  }
+}
+
+// ===== MAIN LOOP =====
+function loop() {
+  updatePlayer();
+  render();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+
+</body>
+</html>
