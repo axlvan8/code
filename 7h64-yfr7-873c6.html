@@ -13,26 +13,48 @@
     height: 100vh;
     cursor: crosshair;
   }
-  canvas {
-    image-rendering: pixelated;
-  }
+  canvas { image-rendering: pixelated; }
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 canvas.width = 640;
 canvas.height = 480;
 
-const FOV = Math.PI/3;
+const FOV = Math.PI / 3;
 const RES = 4;
 const RAYS = canvas.width / RES;
 const STEP = 0.02;
 
-// ===== MAP & ENTITIES =====
+// ===== HELPERS =====
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function isWall(x, y) {
+  const mx = Math.floor(x), my = Math.floor(y);
+  if (my < 0 || my >= map.length) return true;
+  if (mx < 0 || mx >= map[0].length) return true;
+  return map[my][mx] === "#";
+}
+function castRay(angle) {
+  let x = player.x, y = player.y;
+  while (!isWall(x, y) && Math.hypot(x - player.x, y - player.y) < 50) {
+    x += Math.cos(angle) * STEP;
+    y += Math.sin(angle) * STEP;
+  }
+  return Math.hypot(x - player.x, y - player.y);
+}
+function healthPulse() {
+  const h = clamp(player.health || 100, 0, 100) / 100;
+  const speed = 1.2 + (1 - h) * 3.5;
+  const strength = (1 - h) * 0.12;
+  return 1 + Math.sin(performance.now() * 0.001 * speed) * strength;
+}
+
+// ===== MAP =====
 const map = [
   "############################################",
   "#..........................................#",
@@ -59,265 +81,184 @@ const map = [
   "############################################"
 ];
 
-const entities = [
-  { x: 2.5, y: 2, color: "red" },
-  { x: 9, y: 2, color: "blue" }
-];
+// ===== PLAYER =====
+const player = { x: 3, y: 2, angle: 0, speed: 0.05, health: 100 };
 
 // ===== FLASHLIGHT =====
-const flashlight = {
-  power: 1.0,
-  min: 0.2,
-  max: 2.5,
-  battery: 100,
-  drainRate: 0.02
-};
+const flashlight = { power: 1, battery: 100, drainRate: 0.02 };
 
-// ===== PLAYER =====
-const player = {
-  x: 3,
-  y: 2,
-  angle: 0,
-  speed: 0.05,
-  turnSpeed: 0.03,
-  health: 100,
-  hunger: 100,
-  thirst: 100
-};
+// ===== ENEMIES & FOG =====
+const enemies = [{ x: 6.5, y: 3.5, size: 0.4 }, { x: 10.2, y: 6.8, size: 0.5 }];
+const fogParticles = Array.from({ length: 120 }, () => ({ a: Math.random(), d: Math.random(), s: 0.002 + Math.random() * 0.004 }));
 
-const dust = Array.from({ length: 120 }, () => ({
-  x: Math.random(),
-  y: Math.random(),
-  z: Math.random(),
-  speed: 0.0003 + Math.random() * 0.0007
-}));
+let smoothRadiusFactor = 1;
 
-let tiltX = 0, tiltY = 0;
-
-canvas.addEventListener("click", () => {
-  if (document.pointerLockElement !== canvas) {
-    canvas.requestPointerLock();
-  }
-});
-
+// ===== INPUT =====
 const keys = {};
-addEventListener("keydown", e => keys[e.key] = true);
-addEventListener("keyup", e => keys[e.key] = false);
-addEventListener("wheel", e => {
-  flashlight.power += e.deltaY * -0.001;
-  flashlight.power = Math.max(flashlight.min, Math.min(flashlight.max, flashlight.power));
+addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+canvas.addEventListener("click", () => canvas.requestPointerLock());
+document.addEventListener("mousemove", e => {
+  if (document.pointerLockElement === canvas) player.angle += e.movementX * 0.002;
 });
 
-document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement === canvas) {
-    document.addEventListener('mousemove', onMouseMove);
-  } else {
-    document.removeEventListener('mousemove', onMouseMove);
-  }
-});
-
-function onMouseMove(e) {
-  player.angle += Math.max(-0.1, Math.min(0.1, e.movementX * 0.002));
-  tiltX += e.movementX * 0.15;
-  tiltY += e.movementY * 0.15;
-  tiltX *= 0.85;
-  tiltY *= 0.85;
+// ===== ENEMIES LIGHT REACTION =====
+function enemyLightFactor(ex, ey, lightRays) {
+  const dx = ex - player.x, dy = ey - player.y;
+  const dist = Math.hypot(dx, dy);
+  const angle = Math.atan2(dy, dx) - player.angle;
+  if (Math.abs(angle) > FOV / 2) return 0;
+  const idx = clamp(Math.floor((angle + FOV/2) / FOV * lightRays.length), 0, lightRays.length -1);
+  const rayDist = lightRays[idx] || 0;
+  return clamp((rayDist - dist) / 1.5, 0, 1);
 }
 
-// ===== HELPERS =====
-function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-function isWall(x, y) {
-  const mx = Math.floor(x), my = Math.floor(y);
-  if (my < 0 || my >= map.length) return true;
-  if (mx < 0 || mx >= map[0].length) return true;
-  return map[my][mx] === "#";
-}
-
-// ===== PLAYER MOVEMENT =====
-function updatePlayer() {
-  let move = 0, strafe = 0;
-  if (keys["w"] || keys["ArrowUp"]) move = player.speed;
-  if (keys["s"] || keys["ArrowDown"]) move = -player.speed;
-  if (keys["a"]) strafe = -player.speed;
-  if (keys["d"]) strafe = player.speed;
-
-  const nx = player.x + Math.cos(player.angle) * move - Math.sin(player.angle) * strafe;
-  const ny = player.y + Math.sin(player.angle) * move + Math.cos(player.angle) * strafe;
-  if (!isWall(nx, player.y)) player.x = nx;
-  if (!isWall(player.x, ny)) player.y = ny;
-
-  // Hunger, thirst, health drain
-  player.hunger = Math.max(player.hunger - 0.005, 0);
-  player.thirst = Math.max(player.thirst - 0.01, 0);
-  if (player.hunger === 0 || player.thirst === 0) player.health = Math.max(player.health - 0.05, 0);
-
-  // Flashlight battery drain
-  flashlight.battery = Math.max(flashlight.battery - flashlight.drainRate * flashlight.power, 0);
-}
-
-// ===== RAYCAST =====
-function castRay(angle) {
-  let x = player.x, y = player.y;
-  while (!isWall(x, y) && Math.hypot(x - player.x, y - player.y) < 50) {
-    x += Math.cos(angle) * STEP;
-    y += Math.sin(angle) * STEP;
-  }
-  return Math.hypot(x - player.x, y - player.y);
-}
-
-// ===== RENDER =====
-function renderGroundEntities() {
-  for (const e of entities) {
+function renderEnemies(lightRays) {
+  for (const e of enemies) {
+    const f = enemyLightFactor(e.x, e.y, lightRays);
+    if (f <= 0) continue;
     const dx = e.x - player.x, dy = e.y - player.y;
     const dist = Math.hypot(dx, dy);
     const angle = Math.atan2(dy, dx) - player.angle;
-    if (Math.cos(angle) <= 0) continue;
-
-    const screenX = canvas.width / 2 + Math.tan(angle) * (canvas.width / 2) / Math.tan(FOV/2);
-    const groundY = canvas.height / 2 + 50;
-    const size = 20 / dist * 50;
-
-    ctx.fillStyle = e.color;
-    ctx.fillRect(screenX - size/2, groundY - size, size, size/2);
+    const screenX = canvas.width/2 + Math.tan(angle) * (canvas.width/2)/Math.tan(FOV/2);
+    const h = canvas.height / dist * e.size;
+    ctx.fillStyle = f < 0.3 ? "rgba(0,0,0,0.8)" : `rgba(120,0,0,${f})`;
+    ctx.fillRect(screenX - h*0.25, canvas.height/2 - h, h*0.5, h);
   }
 }
 
-function renderHUD() {
-  // Health
-  ctx.fillStyle = "red";
-  ctx.fillRect(10, 10, player.health * 2, 10);
-  // Hunger
-  ctx.fillStyle = "orange";
-  ctx.fillRect(10, 25, player.hunger * 2, 10);
-  // Thirst
-  ctx.fillStyle = "blue";
-  ctx.fillRect(10, 40, player.thirst * 2, 10);
-  // Flashlight battery
-  ctx.fillStyle = "yellow";
-  ctx.fillRect(10, 55, flashlight.battery * 2, 10);
+// ===== UPDATE =====
+function update() {
+  let forward = 0, strafe = 0;
+  if (keys["w"]) forward = player.speed;
+  if (keys["s"]) forward = -player.speed;
+  if (keys["a"]) strafe = -player.speed;
+  if (keys["d"]) strafe = player.speed;
+
+  // Forward/backward
+  let nx = player.x + Math.cos(player.angle) * forward;
+  let ny = player.y + Math.sin(player.angle) * forward;
+  if (!isWall(nx, player.y)) player.x = nx;
+  if (!isWall(player.x, ny)) player.y = ny;
+
+  // Strafing
+  nx = player.x + Math.cos(player.angle + Math.PI/2) * strafe;
+  ny = player.y + Math.sin(player.angle + Math.PI/2) * strafe;
+  if (!isWall(nx, player.y)) player.x = nx;
+  if (!isWall(player.x, ny)) player.y = ny;
+
+  flashlight.battery = Math.max(0, flashlight.battery - flashlight.drainRate);
 }
 
+// ===== RENDER =====
 function render() {
-  const cx = canvas.width/2 + tiltX;
-  const cy = canvas.height/2 + tiltY;
-  const centerDist = castRay(player.angle);
-  const sizeFactor = clamp(centerDist/6, 0.5, 1.2);
-  const baseRadius = Math.min(canvas.width, canvas.height) * 0.45 * sizeFactor;
-
-  // Background
   ctx.fillStyle = "black";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Floor & ceiling
   const halfH = canvas.height / 2;
-  for (let y=0; y<canvas.height; y++) {
-    const dy = Math.abs(y - halfH);
-    const dist = halfH / (dy + 0.0001);
-    let shade = y < halfH ? clamp(30 - dist*1.5,5,30) : clamp(50 - dist*2,10,50);
-    ctx.fillStyle = `hsl(20,30%,${shade}%)`;
-    ctx.fillRect(0,y,canvas.width,1);
+
+  // --- floor & ceiling ---
+  for (let y = 0; y < canvas.height; y++) {
+    const d = Math.abs(y - halfH);
+    const shade = clamp(60 - d * 0.2, 10, 60);
+    ctx.fillStyle = `rgb(${shade},${shade*0.8},${shade*0.6})`;
+    ctx.fillRect(0, y, canvas.width, 1);
   }
 
-  // Walls
-  for (let i=0;i<RAYS;i++) {
-    const rayAngle = player.angle - FOV/2 + (i/RAYS)*FOV;
-    let dist = castRay(rayAngle);
-    dist *= Math.cos(rayAngle - player.angle);
-    dist = Math.max(dist,0.1);
-
-    const wallHeight = canvas.height * 0.5 / dist;
-    const lightDist = dist / flashlight.power;
-    const shade = clamp(120 - lightDist*18,15,70);
-
-    ctx.fillStyle = `hsl(20,100%,${shade}%)`;
-    ctx.fillRect(i*RES, halfH-wallHeight, RES, wallHeight*2);
+  // --- walls ---
+  for (let i = 0; i < RAYS; i++) {
+    const jitter = Math.sin(performance.now() * 0.004 + i * 0.3) * 0.002;
+    const rayAngle = player.angle - FOV/2 + (i/RAYS)*FOV + jitter;
+    let dist = castRay(rayAngle) * Math.cos(rayAngle - player.angle);
+    dist = clamp(dist, 0.01, 50);
+    const h = canvas.height / dist;
+    const shade = clamp(200/dist, 30, 120);
+    ctx.fillStyle = `rgb(${shade},${shade*0.7},${shade*0.4})`;
+    ctx.fillRect(i*RES, halfH - h/2, RES, h);
   }
 
-  // Ground entities
-  renderGroundEntities();
+  // --- flashlight rays ---
+  const lightRays = [];
+  let acc = 0, samples = 0;
+  for (let a = -0.15; a <= 0.15; a += 0.05) {
+    acc += castRay(player.angle + a);
+    samples++;
+  }
+  const avgDist = acc / samples;
+  const target = clamp(avgDist / 6, 0.7, 1.15);
+  smoothRadiusFactor += (target - smoothRadiusFactor) * 0.08;
+  const pulse = healthPulse();
+  const baseRadius = Math.min(canvas.width, canvas.height) * 0.45 * smoothRadiusFactor;
 
-  // Darkness overlay
-  ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.88)";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.globalCompositeOperation = "destination-out";
+  // --- dynamic flashlight polygon per ray ---
+ctx.save();
+ctx.fillStyle = "rgba(0,0,0,0.9)";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.globalCompositeOperation = "destination-out";
 
-  ctx.beginPath();
-  ctx.moveTo(cx,cy);
+ctx.beginPath();
+const centerX = canvas.width/2;
+const centerY = canvas.height/2;
 
-  let flicker = 0.97 + Math.random()*0.06;
-  if (flashlight.battery < 20) flicker = 0.5 + Math.random()*0.5; // strong flicker
-
-  for (let i=0;i<RAYS;i++) {
+for (let i = 0; i < RAYS; i++) {
     const rayAngle = player.angle - FOV/2 + (i/RAYS)*FOV;
     let dist = castRay(rayAngle) * Math.cos(rayAngle - player.angle);
-    const maxLightDist = 6 * flashlight.power;
-    dist = Math.min(dist,maxLightDist);
-    const sx = cx + Math.cos(rayAngle) * (dist/maxLightDist) * baseRadius;
-    const sy = cy + Math.sin(rayAngle) * (dist/maxLightDist) * baseRadius;
-    ctx.lineTo(sx,sy);
-  }
-  ctx.closePath();
-  ctx.fill();
+    dist = clamp(dist, 0.01, 50);
 
-  // Radial flashlight effect
-  const hotspot = baseRadius*0.12;
-  const spill = baseRadius*0.6;
+    const maxDist = 6 * flashlight.power;
+    const rayFlicker = 0.85 + Math.random() * 0.3;
 
-  let g1 = ctx.createRadialGradient(cx,cy,0,cx,cy,hotspot);
-  g1.addColorStop(0, `rgba(255,255,240,${0.6*flashlight.power*flicker})`);
-  g1.addColorStop(1,"rgba(255,255,240,0)");
-  ctx.fillStyle = g1; ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Each ray radius depends on distance -> further objects allow light to extend more
+const rayRadius = baseRadius * clamp(dist / maxDist, 0, 1);
 
-  let g2 = ctx.createRadialGradient(cx,cy,hotspot,cx,cy,spill);
-  g2.addColorStop(0, `rgba(255,210,160,${0.25*flashlight.power})`);
-  g2.addColorStop(0.7, `rgba(255,180,120,0.12)`);
-  g2.addColorStop(1,"rgba(0,0,0,0)");
-  ctx.fillStyle = g2; ctx.fillRect(0,0,canvas.width,canvas.height);
+    const x = centerX + Math.cos(rayAngle) * rayRadius;
+    const y = centerY + Math.sin(rayAngle) * rayRadius;
 
-  let g3 = ctx.createRadialGradient(cx,cy,spill,cx,cy,baseRadius);
-  g3.addColorStop(0,"rgba(0,0,0,0)");
-  g3.addColorStop(0.6,"rgba(0,0,0,0.35)");
-  g3.addColorStop(1,"rgba(0,0,0,0.85)");
-  ctx.fillStyle = g3; ctx.fillRect(0,0,canvas.width,canvas.height);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
 
-  ctx.restore();
-  ctx.globalCompositeOperation = "source-over";
+    lightRays.push(dist);
+}
 
-  // Vignette
-  let v = ctx.createRadialGradient(cx,cy,baseRadius*0.6,cx,cy,baseRadius*1.1);
-  v.addColorStop(0,"rgba(0,0,0,0)");
-  v.addColorStop(1,"rgba(0,0,0,0.4)");
-  ctx.fillStyle = v;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.closePath();
+ctx.fill();
+ctx.restore();
 
-  // Dust particles
+  renderEnemies(lightRays);
+
+  ctx.closePath(); ctx.fill(); ctx.restore();
+
+  // --- soft penumbra ---
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  for (const p of dust) {
-    p.y += p.speed; if(p.y>1)p.y=0;
-    const alpha = 0.05 + p.z*0.015;
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    const px = cx + (p.x-0.5)*baseRadius*1.2;
-    const py = cy + (p.y-0.5)*baseRadius*1.2;
-    const r = 0.3+p.z*1.2;
-    ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill();
-  }
+  ctx.globalCompositeOperation = "multiply";
+  const pen = ctx.createRadialGradient(
+    canvas.width/2, canvas.height/2, baseRadius*0.85,
+    canvas.width/2, canvas.height/2, baseRadius*1.05
+  );
+  pen.addColorStop(0, "rgba(0,0,0,0)");
+  pen.addColorStop(1, "rgba(0,0,0,0.45)");
+  ctx.fillStyle = pen; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.restore();
 
-  // HUD
-  renderHUD();
-}
+  // --- glow ---
+  const g = ctx.createRadialGradient(
+    canvas.width/2, canvas.height/2, 0,
+    canvas.width/2, canvas.height/2, baseRadius
+  );
+  g.addColorStop(0, `rgba(255,240,220,${0.25*pulse})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-// ===== MAIN LOOP =====
-function loop() {
-  updatePlayer();
-  render();
-  requestAnimationFrame(loop);
+  // --- health bars ---
+  ctx.fillStyle = "rgba(200,0,0,0.7)";
+  const barWidth = 100, barHeight = 10;
+  ctx.fillRect(20, 20, barWidth * (player.health / 100), barHeight);
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(20, 20, barWidth, barHeight);
 }
-
+// ===== LOOP =====
+function loop(){ update(); render(); requestAnimationFrame(loop); }
 loop();
 </script>
-
 </body>
 </html>
