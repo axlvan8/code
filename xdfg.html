@@ -1,0 +1,905 @@
+<!DOCTYPE html><html><head><title>noName</title></head><body>
+  <canvas id="game" height="400" width="600" style="margin:center;"></canvas><br><p id="stats"></p>
+<script type="module">
+    
+    const canvas=document.getElementById("game");
+    const ctx=canvas.getContext("2d");
+    var cam = {
+    x:0, y:1.7, z:0,yx:0,xy:0,yy:0,xx:0,zz:0,
+    rotY:0,
+    rotX:0,buffer:100,clipping:0.573576,skyX:0
+};  //hotbar(inventory[9]) has 27 slots, each row with 9 slots.
+    var inventory=["diamond_sword","diamond_pickaxe","diamond","none","none","none","none","none","none",[["none","none","none","none","none","none","none","none","none"],
+                                                                                   ["none","none","none","none","none","none","none","none","none"],
+                                                                                   ["none","none","none","none","none","none","none","none","none"]]];
+    var obpos=[[],[],[],[],[],[],[]];
+    var inventoryItemsX=[150]
+    var scrollspeed=1;
+    var ssssx=0;
+    var darknessSu=149;
+    var sx=960;var sy=0;
+    var grid=[];
+    var tmp=0;
+    var id=0;
+    var horizon=0;
+    var grdw=50;
+    var grdidx=0;
+    var resolution=4;
+    var rowDepth=675;
+    var playerY=15
+    var dx=0;
+    var dy=0;
+    var tick=0;
+    var x=0;
+    var y=0;
+    var xp=0;
+    var yp=0;
+    var zp=0;
+    var xxx;
+    var yyy;
+    var dddiiirrr;
+    var tx;
+    var ty;
+    var tz;
+    var fps=0;
+    var counter=0;
+    var iterator;
+    var iterator2;
+    var timer=0;
+    var wx=(-188);
+    var wy=146;
+    var wz=2;
+    var wsx=0;
+    var wsy=0;
+    var At;
+    var At2;
+    var sz;
+    var tile=[0,0]
+    var dir=[0,0,1];
+    var light=0.326526;
+    var dist;
+    var dist2;
+    var dogcolor=0;
+    var shade=0.5;
+    var diffusionLighting=0;
+    var dist3=[0,0];
+    var dist4;
+    var disty4;
+    const HAND_SCALE = 1.35; // try 1.2 – 1.8
+    var distx4;
+    var Mdist;
+    var Msin;
+    var Mcos;
+    var darknessSw=false;
+    var absDist;
+    var notmuchuse;
+    var plane=[1,0];
+    var alpha=255;
+    var red=0;
+    var green=0;
+    var blue=0;
+    var R=0;
+    var G=0;
+    var B=0;
+    var map=0;
+    var op=-3;
+    var darknessSk=255;
+    let handBob = 0;
+    let handSwing = 0;
+    var dog=1;
+    var X=0;
+    var Y=0;
+    var Z=0;
+    var Xx=[0,0,0];
+    var Yy=[0,0,0];
+    var Zz=[0,0,0];
+    var rot=[0,0,0]
+    var perspective;
+    let selectedSlot = 0; // 0–8
+
+    const PIXEL = 4; // size of one pixel in item icons
+
+    const C = {
+  D: "#4fd1ff", // diamond
+  I: "#cfcfcf", // iron
+  G: "#ffd700", // gold
+  W: "#8b5a2b", // wood
+  S: "#555",    // stone
+  R: "#ff0000", // red
+  O: "#ff9900", // orange
+  B: "#000",    // black
+  P: "#6b3fa0", // ender pearl
+};
+const items = [
+  // Diamond Sword
+  [
+    [0,0,C.D,0,0],
+    [0,0,C.D,0,0],
+    [0,0,C.D,0,0],
+    [0,C.I,C.I,C.I,0],
+    [0,0,C.W,0,0],
+  ],
+  // Diamond Pickaxe
+  [
+    [C.D,C.D,C.D,C.D,C.D],
+    [0,0,C.W,0,0],
+    [0,0,C.W,0,0],
+    [0,0,C.W,0,0],
+    [0,0,C.W,0,0],
+  ],
+  // Diamond
+  [
+    [0,C.D,C.D,C.D,0],
+    [C.D,C.D,C.D,C.D,C.D],
+    [C.D,C.D,C.D,C.D,C.D],
+    [0,C.D,C.D,C.D,0],
+    [0,0,C.D,0,0],
+  ],
+  // Iron Ingot
+  [
+    [C.I,C.I,C.I,C.I,C.I],
+    [C.I,C.I,C.I,C.I,C.I],
+    [0,C.I,C.I,C.I,0],
+  ],
+  // Gold Ingot
+  [
+    [C.G,C.G,C.G,C.G,C.G],
+    [C.G,C.G,C.G,C.G,C.G],
+    [0,C.G,C.G,C.G,0],
+  ],
+  // Apple
+  [
+    [0,C.R,C.R,0],
+    [C.R,C.R,C.R,C.R],
+    [C.R,C.R,C.R,C.R],
+    [0,C.R,C.R,0],
+  ],
+  // Golden Apple
+  [
+    [0,C.G,C.G,0],
+    [C.G,C.G,C.G,C.G],
+    [C.G,C.G,C.G,C.G],
+    [0,C.G,C.G,0],
+  ],
+  // Bow
+  [
+    [C.W,0,0,C.W],
+    [C.W,0,C.W,0],
+    [C.W,0,0,C.W],
+  ],
+  // Arrow
+  [
+    [0,0,C.I],
+    [C.I,C.I,C.I],
+    [0,0,C.I],
+  ],
+  // Torch
+  [
+    [0,C.O,0],
+    [0,C.O,0],
+    [0,C.W,0],
+    [0,C.W,0],
+  ],
+  // Chest
+  [
+    [C.W,C.W,C.W],
+    [C.W,C.I,C.W],
+    [C.W,C.W,C.W],
+  ],
+  // Crafting Table
+  [
+    [C.W,C.W,C.W],
+    [C.W,C.S,C.W],
+    [C.W,C.W,C.W],
+  ],
+  // Furnace
+  [
+    [C.S,C.S,C.S],
+    [C.S,C.B,C.S],
+    [C.S,C.S,C.S],
+  ],
+  // Bread
+  [
+    [C.O,C.O,C.O],
+    [C.O,C.O,C.O],
+  ],
+  // Ender Pearl
+  [
+    [0,C.P,C.P,0],
+    [C.P,C.P,C.P,C.P],
+    [0,C.P,C.P,0],
+  ],
+];
+
+    class GameObject {
+  constructor(x, y,ctx, height,width ) {
+    this.ctx = ctx;
+    this.x = x;
+    this.y = y;
+    this.width=width;
+    this.height=height;
+  }
+  draw() {}
+  update() {}
+
+}
+
+  class DrawnInventory {
+    constructor(ctx){
+      this.ctx=ctx;
+    }
+    draw(selected){
+      this.selected=selected;
+      var dsdsd;
+      for(var guyvt=0;guyvt<inventory.length;guyvt++){
+        if(inventory[guyvt]==inventory[9]){
+          guyvt=inventory.length;
+        }else{
+          dsdsd=new Item()
+        }
+      }
+    }
+  }
+ class Item extends GameObject{
+    draw(type){
+      if(type=="none")return;
+      if(type=="waterBucket"){
+
+      }
+    }
+ }
+ 
+
+
+class tree extends GameObject {
+  update() {
+    const dx = wx - x;
+    const dy = wy - y;
+
+    const sin = Math.sin(dir[0]);
+    const cos = Math.cos(dir[0]);
+
+    // camera space
+    this.camX = dx * cos - dy * sin;
+    this.camY = dx * sin + dy * cos;
+
+    if (this.camY <= 0.1) {
+      this.visible = false;
+      return;
+    }
+
+    this.visible = true;
+
+    const scale = cam.buffer / this.camY;
+
+    this.trunkW = this.width * scale;
+    this.trunkH = this.height * scale;
+    this.leafSize = this.trunkW * 2.2;
+
+    this.screenX =
+      this.camX * scale / cam.clipping + canvas.width / 2;
+
+    // ground anchored
+    this.screenY =
+      canvas.height / 2 + playerY * scale;
+
+    // how "side-on" the tree is (−1 … 1)
+    this.side = Math.max(-1, Math.min(1, this.camX / this.camY));
+  }
+
+  draw() {
+    if (!this.visible) return;
+    const ctx = this.ctx;
+
+    const sideOffset = this.trunkW * this.side * 0.6;
+    const darker = this.side > 0 ? 0.25 : 0.1;
+
+    /* ───── trunk front ───── */
+    ctx.fillStyle = "rgb(120,80,40)";
+    ctx.fillRect(
+      this.screenX - this.trunkW / 2,
+      this.screenY - this.trunkH,
+      this.trunkW,
+      this.trunkH
+    );
+
+    /* ───── trunk side (fake depth) ───── */
+    ctx.fillStyle = `rgba(0,0,0,${darker})`;
+    ctx.fillRect(
+      this.screenX + sideOffset,
+      this.screenY - this.trunkH,
+      this.trunkW * 0.4,
+      this.trunkH
+    );
+
+    /* ───── leaves front ───── */
+    const leafX = this.screenX - this.leafSize / 2;
+    const leafY = this.screenY - this.trunkH - this.leafSize * 0.9;
+
+    ctx.fillStyle = "rgb(60,160,60)";
+    ctx.fillRect(leafX, leafY, this.leafSize, this.leafSize);
+
+    /* ───── leaves side ───── */
+    ctx.fillStyle = `rgba(0,0,0,${darker + 0.1})`;
+    ctx.fillRect(
+      leafX + sideOffset,
+      leafY,
+      this.leafSize * 0.35,
+      this.leafSize
+    );
+
+    /* ───── ground shadow ───── */
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(
+      this.screenX - this.trunkW,
+      this.screenY - 2,
+      this.trunkW * 2,
+      4
+    );
+  }
+}
+
+    var ne=new tree(100,10,ctx,70,30);
+    
+    setup();
+    
+    function drawCloud(x, y, size) {
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+
+  ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.6, y - size * 0.3, size * 0.6, 0, Math.PI * 2);
+  ctx.arc(x + size * 1.2, y, size * 0.5, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.6, y + size * 0.3, size * 0.6, 0, Math.PI * 2);
+
+  ctx.closePath();
+  ctx.fill();
+}
+function mod(a,b){
+  return ((a%b)+b)%b;
+}
+     async function repeatUntil(conditionFn, actionFn, intervalMs = 100){
+  return new Promise(resolve => {
+    const interval = setInterval(async () => {
+      await actionFn();
+      if (conditionFn()) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, intervalMs);
+  });
+}
+function waitUntil(conditionFn) {
+  return new Promise(resolve => {
+    const interval = setInterval(() => {
+      if (conditionFn()) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 50);
+  });}
+
+    
+  
+function orderedInsert(arr, value) {
+  const index = findInsertIndex(arr, value);
+  arr.splice(index, 0, value);
+}
+function insertObjectOrdered(x, y, z, size, type, distance) {
+  let i = 0;
+
+  while (i < obpos[6].length && obpos[6][i] < distance) {
+    i++;
+  }
+
+  obpos[0].splice(i, 0, x);
+  obpos[1].splice(i, 0, y);
+  obpos[2].splice(i, 0, z);
+  obpos[3].splice(i, 0, size);
+  obpos[4].splice(i, 0, type);
+  obpos[6].splice(i, 0, distance);
+}
+
+
+function findInsertIndex(arr, value) {
+  let i = 0;
+  while (i < arr.length && arr[i] < value) {
+    i++;
+  }
+  return i;
+}
+
+function idbno(distance, objIndex) {
+  let i = 0;
+
+  // find correct insertion index (ascending order)
+  while (i < obpos[6].length && obpos[6][i] < distance) {
+    i++;
+  }
+
+  // insert distance + object index at same position
+  obpos[6].splice(i, 0, distance);
+  obpos[5].splice(i, 0, objIndex);
+}
+
+function sdaco(){
+  obpos=[[],[],[],[],[],[],[]];
+  iterator=0;
+  for(iterator=0;iterator<obpos[4].length;iterator++){
+    tx=(obpos[0][iterator]-x);
+    ty=(obpos[1][iterator]-y);
+    tz=(obpos[2][iterator]-z);
+    if(!((Math.abs(tx)>1000)&&(Math.abs(tz)>1000))||(obpos[4][iterator]===6)){
+      absDist=((((tx*Math.sin(rot[0]/(-1)))+(tz*Math.cos(rot[0])))*Math.cos(rot[1]))+(ty*Math.sin(rot[1]/(-1))))/200;
+      if(((0.05<absDist)&&(absDist<5))||(obpos[4][iterator]===6)){
+        idbno(absDist,iterator);
+      }
+    }
+  }
+}
+
+function drawSun(x, y) {
+  
+  ctx.beginPath();
+  ctx.fillStyle = `rgb(249,255,${darknessSu})`;
+  ctx.arc(x, y, 15, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+    async function setup(){
+      resolution=4;
+      cam.x=0;
+      sdaco();
+      drawObject(obpos[5][obpos[5].length]);
+        drawSky(0);
+        generateGrid();
+        render();
+    }
+    function penColor(n) {
+      const hue = ((n % 200) + 200) % 200;
+      return `hsl(${hue * 360 / 200}, 100%, 50%)`;
+    }
+    function joinCalculatedDots(x1,y1,z1,x2,y2,z2){
+      if(5<z1 && 5<z2){
+        if(dog==1){
+          if(dogcolor==1){
+            ctx.fillStyle='rgb(0,0,0)';
+          }else{
+            if(dogcolor==2){
+              ctx.fillStyle='rgb(127,12,12)';
+            }else{
+              if(dogcolor==3){
+                ctx.fillStyle='rgb(204,102,0)';
+              }else{
+                if(dogcolor==4){
+                  ctx.fillStyle='rgb(230,230,230)';
+                }else{
+                  if(dogcolor==5){
+                    ctx.fillStyle='rgb(161,87,87)';
+                  }else{
+                    ctx.fillStyle='rgb(250,118,202)';
+                  }
+                }
+              }
+            }
+          } resolution=((light*100)/(30+z1+z2));
+        }else{
+        shade=((diffusionLighting*light)*(500/(500+(z1+z2))));
+        ctx.fillStyle=penColor(((((Math.floor((((alpha*256)+Math.floor(red*light))*256)+(green*light)))*256)+(blue*light)))-10);
+        resolution=((23*100)/(5+(z1+z2)));
+      }
+       
+      }
+    }
+    function generateGrid(){
+        grid=[];tmp=0;grid.push(50);for(var i=0;i<grdw;i++){
+        for(var j=0;j<grdw;j++){if(Math.random()>0.5)
+        {grid.push(35)}else{grid.push(40)}}}}
+    function drawFloor() {
+      resolution=4;
+  // Direction vector
+  dir[1] = Math.sin(dir[0]);
+  dir[2] = Math.cos(dir[0]);
+
+  // Camera plane (perpendicular to direction)
+  plane[0] = Math.sin(dir[0] + Math.PI / 2);
+  plane[1] = Math.cos(dir[0] + Math.PI / 2);
+
+  // Start drawing from horizon downwards
+  for (let dy = horizon; dy < 180; dy += resolution) {
+
+    // Perspective depth (your math)
+    let rowDepth = playerY * (180 / (dy - horizon));
+
+    // World position at left edge
+    let wx = x + rowDepth * (dir[1] - plane[0]);
+    let wy = y + rowDepth * (dir[2] - plane[1]);
+
+    // Step per column
+    let wsx = (plane[0] * rowDepth) / 240;
+    let wsy = (plane[1] * rowDepth) / 240;
+
+    // Draw row
+    for (let dx = -300; dx < 300; dx += resolution) {
+
+      let tileX = Math.floor(wx / 34);
+      let tileY = Math.floor(wy / 34);
+      let idx =
+        ((tileX + tileY * grdw) % grid.length + grid.length) % grid.length;
+
+      ctx.fillStyle = penColor(grid[idx]);
+
+      // Convert from center-origin to canvas coordinates
+      ctx.fillRect(
+        dx + canvas.width / 2,
+        dy + canvas.height / 2,
+        resolution,
+        resolution
+      );
+
+      wx += wsx * resolution;
+      wy += wsy * resolution;
+    }
+  }
+}
+function getRandomIntInclusive(min, max) {
+  // Use Math.ceil() on min and Math.floor() on max to handle potential non-integer inputs
+  const minCeiled = Math.ceil(min);
+  const maxFloored = Math.floor(max);
+  // The expression generates a number in the range [min, max] with uniform distribution
+  return Math.floor(Math.random() * (maxFloored - minCeiled + 1)) + minCeiled;
+}
+
+    function editOBpos(num,x,y,z,size,type){
+      if(no>=0&&no<=5){
+        obpos[0][num-1]=x;
+        obpos[1][num-1]=y;
+        obpos[2][num-1]=z;
+        obpos[3][num-1]=size;
+        obpos[4][num-1]=type;
+      }else{
+        obpos[0].push(x);
+        obpos[1].push(y);
+        obpos[2].push(z);
+        obpos[3].push(size);
+        obpos[4].push(type);
+      }
+    }
+    function drawpurplesquare(size,x,y){
+      ctx.fillStyle='rgb(255,0,255)';
+      ctx.fillRect(x,y,size,size);
+    }
+    function drawOB(x,y,z,size,type){
+      tx=(x-xp);
+      ty=(y-yp);
+      tz=(z-zp);
+      absDist=((((tx*Math.sin((rot[0]/(-1))))+(tz*Math.cos(rot[0])*Math.cos(rot[1]))+(ty*Math.sin(rot[1]/(-1))))))/200;
+      dist2=((tx**2)+((ty**2)+(tz**2)))**0.5;
+      dist=Math.abs(absDist);
+      sz=(size/dist);
+      xxx=(((tx*Math.cos(rot[0]))+(tz*Math.sin(rot[0]))))/dist;
+      yyy=(((ty*Math.cos(rot[1]))+(((tx*Math.sin(rot[0]/(-1)))+(tz*Math.cos(rot[0]))*Math.sin(rot[0])))))/dist;
+      if(absDist<(-0.05)){
+        drawpurplesquare(sz,xxx,yyy);
+      }
+      dddiiirrr=90;
+      if(type==6){
+        Mdist=dist2;
+        Msin=(0-(((tx*Math.cos(rot[0]/(-1)))+(tz*Math.sin(rot[0])))))/Mdist;
+        if(Mdist>50){
+          At=getRandomIntInclusive(getRandomIntInclusive(-20,-5),getRandomIntInclusive(5,20));
+          At2=getRandomIntInclusive(getRandomIntInclusive(-20,-5),getRandomIntInclusive(5,20));
+          for(var dsf=0;dsf<getRandomIntInclusive(50,500);dsf++){
+            editOBpos(301,(xp-At),yp,(zp-At2),size,6);
+          }
+        }
+
+      }
+      if(type==7){
+        if(dist2>300){
+          editOBpos(302,xp,yp,zp,size,8);
+        }
+      }
+    }
+    function drawObject(num){
+      drawOB(obpos[0][num],obpos[1][num],obpos[2][num],obpos[3][num],obpos[4][num])
+    }
+   
+    async function drawRow(){
+        wsx=(wsx*resolution);wsy=(wsy*resolution);ctx.moveTo(-240,dy);dx=(-240);ctx.beginPath();
+        repeatUntil(dx>239,()=>{tile[0]=Math.floor(wx/34);tile[1]=Math.floor(wy/34);
+        grdidx=tile[0]+(tile[1]*grdw);ctx.fillStyle=penColor(grid[(1+(((grdidx%grid.length)+grid.length)%grid.length))])
+        ctx.lineTo((dx+resolution),dy);dx=dx+resolution;wx+=wsx;wy+=wsy;});ctx.closePath();
+        dddiiirrr=(((xxx/(-2000))*rot[1])+90);
+        if(absDist<(-0.05)){
+
+        }
+    }
+    function drawSky(x){
+      //${darkness}
+      ctx.fillStyle=`rgb(100,200,${darknessSk})`;
+      ctx.fillRect(x, 0, canvas.width, (canvas.height / 2)+5);
+      drawSun(100-x,100);
+      drawCloud(25-x,150,50);drawCloud(225-x,30,50);drawCloud(425-x,120,50);
+    }
+    
+  function handleKeys(e) {
+  const k = e.key.toLowerCase();
+  const speed = 1.8;
+
+  const sin = Math.sin(dir[0]);
+  const cos = Math.cos(dir[0]);
+if (k >= "1" && k <= "9") {
+  selectedSlot = Number(k) - 1;
+}
+  if(k == " "){
+    playerY+=2;
+    
+  }
+  if(k == "shift"){
+    playerY-=2;
+  }
+  if ("wasd".includes(k)) {
+  handSwing = 1;
+}
+
+  // forward / backward
+  if (k === "w") {
+    x += sin * speed;
+    y += cos * speed;
+  }
+  if (k === "s") {
+    x -= sin * speed;
+    y -= cos * speed;
+  }
+
+  // strafe
+  if (k === "a") {
+    x -= cos * speed;
+    y += sin * speed;
+  }
+  if (k === "d") {
+    x += cos * speed;
+    y -= sin * speed;
+  }
+
+  // rotate
+  if (k === "r") dir[0] += 0.05;
+  if (k === "l") dir[0] -= 0.05;
+
+  cam.x = x;
+  cam.y = y;
+}
+
+
+    function render() {
+      
+      //handBob += 0.08;
+      //handSwing *= 0.85;
+      document.getElementById("stats").textContent=` player:[x:${x} y:${playerY} z:${y} dir:${dir[0]}] cam:[x:${cam.x} y:${cam.y} z:${cam.z} cam:${cam}]`;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  cam.skyX=dir[0]*5.5
+  sx=(x-(cam.skyX*scrollspeed));
+  drawSky(0);
+  drawSky(mod(sx,(480*2))-480);
+  
+  drawFloor();
+  ne.update();
+  ne.draw();
+  drawHotbar();
+  
+  //drawHand();
+  drawHeldItem();
+  requestAnimationFrame(render);
+}
+function display(x1,y1,z1){
+  if(op==1){
+
+  }else{
+    if(op<1){
+      if(op==0){
+        x=x1;
+        playerY=y1
+        y=z;
+      }else{
+        if(op==-1){
+        X=x1;
+        Y=y1;
+        Z=z1;
+        }else{
+          if(op==-2){
+            cam.xx=x1;
+            cam.yy=y1;
+            cam.zz=z1;
+          }else{
+            ctx.fillStyle=penColor(((((Math.floor((((alpha*256)+Math.floor(red*light))*256)+(green*light)))*256)+(blue*light)))-10);
+            Xx[0]=x;
+            Yy[0]=y;
+            Zz[0]=z;
+            Xx[0]=X;
+            Yy[0]=Y;
+            Zz[0]=Z;
+            Xx[0]=x1;
+            Yy[0]=y1;
+            Zz[0]=z1;
+
+          }
+        }
+      }
+    }
+  }
+}
+function drawHand() {
+  const ctx = canvas.getContext("2d");
+
+  // screen position (bottom right)
+  const baseX = canvas.width * 0.72;
+  const baseY = canvas.height * 0.78;
+
+  // simple walking bob
+  const bob =
+    Math.sin(timer * 0.15) *
+    Math.min(6, Math.abs(x) + Math.abs(y)) * 0.05;
+
+  // hand size
+  const w = 40;
+  const h = 60;
+
+  ctx.save();
+
+  // slight tilt (feels more alive)
+  ctx.translate(baseX, baseY + bob);
+  ctx.rotate(-0.15);
+
+  // arm
+  ctx.fillStyle = "rgb(180,140,100)";
+  ctx.fillRect(-10, 0, 18, 45);
+
+  // hand
+  ctx.fillStyle = "rgb(210,170,130)";
+  ctx.fillRect(-18, 30, w, h * 0.6);
+
+  ctx.restore();
+}
+
+function drawItem(x, y, map) {
+  map.forEach((row, r) => {
+    row.forEach((color, c) => {
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(
+          x + c * PIXEL,
+          y + r * PIXEL,
+          PIXEL,
+          PIXEL
+        );
+      }
+    });
+  });
+}
+function drawHeldItem() {
+  const item = items[selectedSlot];
+  if (!item) return;
+
+  const bob = Math.sin(handBob) * 4;
+  const swing = Math.sin(handBob * 1.5) * 6 * handSwing;
+
+  //  anchor point (bottom-right of screen)
+  const anchorX = canvas.width - 60;
+  const anchorY = canvas.height - 20;
+
+  ctx.save();
+
+  // arm rotation
+  ctx.translate(anchorX, anchorY);
+  ctx.rotate(-0.55 + swing * 0.01);
+  ctx.scale(HAND_SCALE, HAND_SCALE);
+
+  /* ───── ARM (Minecraft-style) ───── */
+  const armW = 26;
+  const armH = 90;
+
+  // arm front
+  ctx.fillStyle = "#c68642";
+  ctx.fillRect(-armW / 2, -armH, armW, armH);
+
+  // arm side (depth)
+  ctx.fillStyle = "#a66a32";
+  ctx.fillRect(armW / 2, -armH, 6, armH);
+
+  // arm highlight
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  ctx.fillRect(-armW / 2, -armH, armW, 8);
+
+  /* ───── HAND BLOCK ───── */
+  const handSize = 28;
+
+  ctx.fillStyle = "#c68642";
+  ctx.fillRect(
+    -handSize / 2,
+    -handSize - 4,
+    handSize,
+    handSize
+  );
+
+  ctx.fillStyle = "#9c5e2e";
+  ctx.fillRect(
+    handSize / 2,
+    -handSize - 4,
+    6,
+    handSize
+  );
+
+  /* ───── ITEM ───── */
+  ctx.translate(8, -handSize - 26 + bob);
+  ctx.scale(2.4, 2.4);
+  ctx.rotate(0.2);
+
+  drawItem(-20, -30, item);
+
+  ctx.restore();
+}
+
+function drawHotbar() {
+  const slotSize = 40;
+  const padding = 6;
+  const baseX = canvas.width / 2 - (slotSize * 9) / 2;
+  const baseY = canvas.height - 50;
+
+  for (let i = 0; i < 9; i++) {
+    const x = baseX + i * slotSize;
+    const y = baseY;
+
+    // background
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(x, y, slotSize, slotSize);
+
+    // highlight selected
+    if (i === selectedSlot) {
+      ctx.save();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(255,255,255,0.7)";
+      ctx.shadowBlur = 10;
+      ctx.strokeRect(x - 2, y - 2, slotSize + 4, slotSize + 4);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, slotSize, slotSize);
+    }
+
+    // draw item
+    if (items[i]) {
+      drawItem(
+        x + padding,
+        y + padding,
+        items[i]
+      );
+    }
+  }
+}
+
+//255
+    setInterval(()=>{
+        timer+=1;
+        if(!darkness==255){
+          darknessSk+=0.1;darknessSw=false;
+        }else if(darkness==255){
+          darknessSw=true;
+          darknessSk-=0.2;
+        }
+        if(darknessSw){
+          darknessSk-=0.2;
+        }
+
+    },100)
+    canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  selectedSlot += Math.sign(e.deltaY);
+  selectedSlot = (selectedSlot + 9) % 9;
+});
+
+    document.addEventListener('keydown',(e)=>{handleKeys(e)})
+</script></body></html>
