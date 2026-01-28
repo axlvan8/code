@@ -54,6 +54,7 @@
     var At;
     var At2;
     var sz;
+    var zzz;
     var tile=[0,0]
     var dir=[0,0,1];
     var light=0.326526;
@@ -69,6 +70,7 @@
     var distx4;
     var Mdist;
     var Msin;
+    var between;
     var Mcos;
     var darknessSw=false;
     var absDist;
@@ -488,7 +490,15 @@ function drawSun(x, y) {
         ctx.fillStyle=penColor(((((Math.floor((((alpha*256)+Math.floor(red*light))*256)+(green*light)))*256)+(blue*light)))-10);
         resolution=((23*100)/(5+(z1+z2)));
       }
-       
+      ctx.closePath();
+      ctx.moveTo(((x1*(100/z1))),(y1*(100/z1)));
+      ctx.beginPath();
+      ctx.moveTo((x2*(100/z2)),(y2*(100/z2)));
+      }else{
+        if(5<z2){
+          between=((z2-5.01)/(z2-z1));
+          joinCalculatedDots(((x1*between)+(x2*(1-between))),((y1*between)+(y2*(1-between))),5.01,x2,y2,z2);
+        }
       }
     }
     function generateGrid(){
@@ -595,6 +605,10 @@ function getRandomIntInclusive(min, max) {
         }
 
       }
+      if(type==1){
+        var fhfhg=new tree(tx,ty,ctx,30,10);
+        fhfhg.draw();
+      }
       if(type==7){
         if(dist2>300){
           editOBpos(302,xp,yp,zp,size,8);
@@ -693,9 +707,12 @@ if (k >= "1" && k <= "9") {
   drawHeldItem();
   requestAnimationFrame(render);
 }
+function drawTriangle(cut){
+
+}
 function display(x1,y1,z1){
   if(op==1){
-
+    joinCalculatedDots(x,playerY,y,x1,y1,z1)
   }else{
     if(op<1){
       if(op==0){
@@ -717,13 +734,44 @@ function display(x1,y1,z1){
             Xx[0]=x;
             Yy[0]=y;
             Zz[0]=z;
-            Xx[0]=X;
-            Yy[0]=Y;
-            Zz[0]=Z;
+            Xx[1]=X;
+            Yy[1]=Y;
+            Zz[1]=Z;
+            Xx[1]=x1;
+            Yy[1]=y1;
+            Zz[1]=z1;
+            drawTriangle(0);
             Xx[0]=x1;
             Yy[0]=y1;
             Zz[0]=z1;
-
+            Xx[1]=X;
+            Yy[1]=Y;
+            Zz[1]=Z;
+            Xx[1]=xxx;
+            Yy[1]=yyy;
+            Zz[1]=zzz;
+            drawTriangle(0);
+          }
+        }
+      }
+    }else{
+      if(operation==2){
+        ctx.closePath();
+        resolution=201;
+        if(90<((y1*(100/z1))-100)){
+          ctx.moveTo(-240,90);dy=90
+        }else{
+          ctx.moveTo(-240,((y1*(100/z1))-100));dy=((y1*(100/z1))-100);
+        }
+        ctx.beginPath();
+        ctx.moveTo(240,dy);
+        ctx.moveTo(240,dy-200);dy-=200;
+        ctx.moveTo(-240,dy);
+      }else{
+        if(operation==3){
+          if(z1>0.1){
+            ctx.closePath();
+            ctx.moveTo()
           }
         }
       }
@@ -884,9 +932,9 @@ function drawHotbar() {
 //255
     setInterval(()=>{
         timer+=1;
-        if(!darkness==255){
+        if(!darknessSu==255){
           darknessSk+=0.1;darknessSw=false;
-        }else if(darkness==255){
+        }else if(darknessSu==255){
           darknessSw=true;
           darknessSk-=0.2;
         }
