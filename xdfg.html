@@ -9,10 +9,17 @@
     rotY:0,
     rotX:0,buffer:100,clipping:0.573576,skyX:0
 };  //hotbar(inventory[9]) has 27 slots, each row with 9 slots.
-    var inventory=["diamond_sword","diamond_pickaxe","diamond","none","none","none","none","none","none",[["none","none","none","none","none","none","none","none","none"],
-                                                                                   ["none","none","none","none","none","none","none","none","none"],
-                                                                                   ["none","none","none","none","none","none","none","none","none"]]];
+    var inventory=[0,1,2,3,4,5,6,7,8,[[null,null,null,null,null,null,null,null,null],
+                                      [null,null,null,null,null,null,null,null,null],
+                                      [null,null,null,null,null,null,null,null,null]]];
     var obpos=[[],[],[],[],[],[],[]];
+    const BLOCK = {
+      AIR: 0,
+      GRASS: 35,
+      DIRT: 40,
+      STONE: 50,
+    };
+    let blockMap = [];
     var inventoryItemsX=[150]
     var scrollspeed=1;
     var ssssx=0;
@@ -84,7 +91,7 @@
     var G=0;
     var B=0;
     var map=0;
-    var op=-3;
+    var operation=-3;
     var darknessSk=255;
     let handBob = 0;
     let handSwing = 0;
@@ -92,13 +99,21 @@
     var X=0;
     var Y=0;
     var Z=0;
+    var dot;
     var Xx=[0,0,0];
     var Yy=[0,0,0];
     var Zz=[0,0,0];
     var rot=[0,0,0]
     var perspective;
     let selectedSlot = 0; // 0–8
-
+    var len={a:0,b:0,c:0};
+    var peri;
+    var inc={x:0,y:0,ind:0};
+    var Ao={x:0,Y:0};
+    var Bo={x:0,Y:0};
+    var Co={x:0,y:0};
+    var td;
+    var rate;
     const PIXEL = 4; // size of one pixel in item icons
 
     const C = {
@@ -357,6 +372,82 @@ class tree extends GameObject {
   ctx.closePath();
   ctx.fill();
 }
+function raycastBlock(maxDist = 140, step = 4) {
+  const sin = Math.sin(dir[0]);
+  const cos = Math.cos(dir[0]);
+
+  let rx = x;
+  let ry = y;
+
+  let lastTileX = Math.floor(rx / 34);
+  let lastTileY = Math.floor(ry / 34);
+
+  for (let d = 0; d < maxDist; d += step) {
+    rx += sin * step;
+    ry += cos * step;
+
+    const tileX = Math.floor(rx / 34);
+    const tileY = Math.floor(ry / 34);
+
+    // only check when entering a new tile
+    if (tileX !== lastTileX || tileY !== lastTileY) {
+      const idx = tileX + tileY * grdw;
+
+      if (idx >= 0 && idx < blockMap.length) {
+        if (blockMap[idx] !== BLOCK.AIR) {
+          return {
+            hitIndex: idx,
+            hitX: tileX,
+            hitY: tileY,
+            prevX: lastTileX,
+            prevY: lastTileY
+          };
+        }
+      }
+
+      lastTileX = tileX;
+      lastTileY = tileY;
+    }
+  }
+  return null;
+}
+
+function breakBlock() {
+  const hit = raycastBlock();
+  if (!hit) return;
+
+  blockMap[hit.hitIndex] = BLOCK.AIR;
+  grid[hit.hitIndex] = blockToColor(BLOCK.AIR);
+}
+
+
+function placeBlock() {
+  const hit = raycastBlock();
+  if (!hit) return;
+
+  const idx = hit.prevX + hit.prevY * grdw;
+  if (idx < 0 || idx >= blockMap.length) return;
+  if (blockMap[idx] !== BLOCK.AIR) return;
+
+  // example: use selected hotbar slot
+  const blockType =
+    selectedSlot === 0 ? BLOCK.DIRT :
+    selectedSlot === 1 ? BLOCK.STONE :
+    BLOCK.GRASS;
+
+  blockMap[idx] = blockType;
+  grid[idx] = blockToColor(blockType);
+}
+
+function blockToColor(block) {
+  switch (block) {
+    case BLOCK.GRASS: return 35;
+    case BLOCK.DIRT:  return 40;
+    case BLOCK.STONE: return 50;
+    default:          return 0; // AIR
+  }
+}
+
 function mod(a,b){
   return ((a%b)+b)%b;
 }
@@ -452,7 +543,7 @@ function drawSun(x, y) {
       resolution=4;
       cam.x=0;
       sdaco();
-      drawObject(obpos[5][obpos[5].length]);
+      drawObject(obpos[5][obpos[5].length-1]);
         drawSky(0);
         generateGrid();
         render();
@@ -493,7 +584,7 @@ function drawSun(x, y) {
       ctx.closePath();
       ctx.moveTo(((x1*(100/z1))),(y1*(100/z1)));
       ctx.beginPath();
-      ctx.moveTo((x2*(100/z2)),(y2*(100/z2)));
+      ctx.lineTo((x2*(100/z2)),(y2*(100/z2)));
       }else{
         if(5<z2){
           between=((z2-5.01)/(z2-z1));
@@ -501,10 +592,34 @@ function drawSun(x, y) {
         }
       }
     }
-    function generateGrid(){
+    /*function generateGrid(){
         grid=[];tmp=0;grid.push(50);for(var i=0;i<grdw;i++){
         for(var j=0;j<grdw;j++){if(Math.random()>0.5)
-        {grid.push(35)}else{grid.push(40)}}}}
+        {grid.push(35)}else{grid.push(40)}}}}*/
+      /*  function generateGrid() {
+  grid = [];
+  blockMap = [];
+
+  for (let i = 0; i < grdw * grdw; i++) {
+    if (Math.random() > 0.5) {
+      blockMap[i] = BLOCK.GRASS;
+      grid[i] = 35;   // grass color
+    } else {
+      blockMap[i] = BLOCK.DIRT;
+      grid[i] = 40;   // dirt color
+    }
+  }
+}*/
+function generateGrid() {
+  grid = [];
+  blockMap = [];
+
+  for (let i = 0; i < grdw * grdw; i++) {
+    blockMap[i] = Math.random() > 0.5 ? BLOCK.GRASS : BLOCK.DIRT;
+    grid[i] = blockToColor(blockMap[i]);
+  }
+}
+
     function drawFloor() {
       resolution=4;
   // Direction vector
@@ -561,7 +676,7 @@ function getRandomIntInclusive(min, max) {
 }
 
     function editOBpos(num,x,y,z,size,type){
-      if(no>=0&&no<=5){
+      if(num>=0&&num<=5){
         obpos[0][num-1]=x;
         obpos[1][num-1]=y;
         obpos[2][num-1]=z;
@@ -697,18 +812,99 @@ if (k >= "1" && k <= "9") {
   sx=(x-(cam.skyX*scrollspeed));
   drawSky(0);
   drawSky(mod(sx,(480*2))-480);
-  
+  drawTriangle(true);
   drawFloor();
   ne.update();
   ne.draw();
   drawHotbar();
-  
+  drawCrossHair(0,0,0);
   //drawHand();
   drawHeldItem();
   requestAnimationFrame(render);
 }
 function drawTriangle(cut){
+  if(!cut){
+    cut=false;
+  }
+  if((5<Zz[0])||((5<Zz[1])||(5<Zz[2]))||cut){
+    if((5<Zz[0])&&((5<Zz[1])&&(5<Zz[2]))||cut){
+      tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+    }else{
+      if(((5<Zz[0])&&((5<Zz[1])&&(5>Zz[2])))){
+        xxx=Xx[2];
+        yyy=Yy[2];
+        zzz=Zz[2];
+        dot=((Zz[0]-5)/(Zz[0]-zzz));
+        Xx[2]=((dot*xxx)+((1-dot)*Xx[0]));
+        Yy[2]=((dot*yyy)+((1-dot)*Yy[0]));
+        Zz[2]=5;
+        tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+        dot=((Zz[1])-5)/(Zz[1]-zzz);
+        Xx[0]=((dot*xxx)+((1-dot)*Xx[1]));
+        Yy[0]=((dot*yyy)+((1-dot)*Yy[1]));
+        Zz[0]=5;
+        tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+      }
+      if((5<Zz[0])&&((5>Zz[1])&&(5<Zz[2]))){
+        xxx=Xx[1];
+        yyy=Yy[1];
+        zzz=Zz[1];
+        dot=((Zz[2]-5)/(Zz[2]-zzz));
+        Xx[1]=((dot*xxx)+((1-dot)*Xx[2]));
+        Yy[1]=((dot*yyy)+((1-dot)*Yy[2]));
+        Zz[1]=5;
+        tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+        dot=((Zz[0]-5)/(Zz[0]-zzz));
+        Xx[2]=((dot*xxx)+((1-dot)*Xx[0]));
+        Yy[2]=((dot*yyy)+((1-dot)*Yy[0]));
+        Zz[2]=5;
+        tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+      }else{
+        tri(((100*Xx[0])/Zz[0]),((100*Yy[0])/Zz[0]),((100*Xx[1])/Zz[1]),((100*Yy[1])/Zz[1]),((100*Xx[2])/Zz[2]),((100*Yy[2])/Zz[2]));
+      }
+    }
+  }
+}
 
+function tri(Ax,Ay,Bx,By,Cx,Cy){
+  ctx.closePath();
+  len.a=((((Bx-Cx)**2)+((By-Cy)**2)))**0.5;
+  len.b=((((Ax-Cx)**2)+((Ay-Cy)**2)))**0.5;
+  len.c=((((Ax-Bx)**2)+((Ay-By)**2)))**0.5;
+  peri=len.a+len.b+len.c;
+  inc.x=(((len.a*Ax)+(len.b*Bx))+(len.c*Cx)/peri);
+  inc.y=(((len.a*Ay)+(len.b*By))+(len.c*Cy)/peri);
+  inc.ind=((((len.b+len.c)-len.a)*((len.c+len.a)-len.b)))**0.5;
+  Ao.x=inc.x-Ax;
+  Ao.Y=inc.y-Ay;
+  Bo.x=inc.x-Bx;
+  Bo.Y=inc.y-By;
+  Co.x=inc.x-Cx;
+  Co.y=inc.y-Cy;
+  if((len.a<len.b)&&(len.a<len.c)){
+    td=((Ao.x**2)+(Ao.y**2))**0.5;
+  }else if(!(len.a<len.b)&&(len.b>len.c)){
+    td=((Bo.x**2)+(Bo.y**2))**0.5;
+  }else{
+    td=((Co.x**2)+(Co.y**2))**0.5;
+  }
+  rate=(((td*2)-inc.ind)/(td*4));
+  ctx.moveTo(inc.x,inc.y);
+  resolution=inc.ind;
+  ctx.beginPath();
+  ctx.arc(inc.x,inc.y,inc.ind,0,359,false);
+  ctx.closePath();
+  td=1;
+  for(var gfugd=0;gfugd<(Math.ceil(((Math.log(2/inc.ind))/Math.log(rate))+0.5));gfugd++){
+    td*=rate;
+    resolution=(td*ind)+1;
+    ctx.closePath();
+    ctx.moveTo((Ao.x*td)+Ax,(Ao.y*td)+Ay);
+    ctx.beginPath();
+    ctx.lineTo((Bo.x*td)+Bx,(Bo.y*td)+By);
+    ctx.lineTo((Co.x*td)+Cx,(Co.y*td)+Cy);
+    ctx.lineTo((Ao.x*td)+Ax,(Ao.y*td)+Ay);
+  }
 }
 function display(x1,y1,z1){
   if(op==1){
@@ -928,7 +1124,17 @@ function drawHotbar() {
     }
   }
 }
-
+function drawCrossHair(r,g,b){
+  ctx.fillStyle=`rgb(${r},${g},${b})`;
+  ctx.moveTo(300,200);
+  ctx.beginPath();
+  ctx.lineTo(300,195);
+  ctx.lineTo(300,205);
+  ctx.moveTo(300,200);
+  ctx.lineTo(295,200);
+  ctx.lineTo(305,200);
+  ctx.closePath();
+}
 //255
     setInterval(()=>{
         timer+=1;
@@ -947,6 +1153,14 @@ function drawHotbar() {
   e.preventDefault();
   selectedSlot += Math.sign(e.deltaY);
   selectedSlot = (selectedSlot + 9) % 9;
+});
+canvas.addEventListener("mousedown", (e) => {
+  if (e.button === 0) breakBlock();     // left click
+  if (e.button === 2) placeBlock();     // right click
+});
+
+canvas.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
 });
 
     document.addEventListener('keydown',(e)=>{handleKeys(e)})

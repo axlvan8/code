@@ -5,6 +5,17 @@
         <title>tyty</title>
         <script src="comment.js"></script>
         <script src="t.js"></script>
+        <script>
+          function fetchJSON(file) {
+  try {
+    const filePath = path.join(__dirname, file);
+    const json = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(json);
+  } catch (err) {
+    console.log(err);
+  }
+}fetchJSON('wert.json');
+        </script>
         <link 
         id="favicon"
         rel="icon"
