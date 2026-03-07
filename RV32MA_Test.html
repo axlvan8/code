@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RV32I RAM + ROM Layout</title>
+    <meta charset="UTF-8">
+    <style>
+        body{
+            color:azure;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+<pre id="output"></pre>
+<iframe width="800" height="800" id="file" src=""></iframe>
+<canvas width="800" height="800" id="OS" src=""></canvas>
+<div id="form"><select id="select">
+            <option>DindowsXP PRO</option>
+            <option>Dindows7</option>
+            <option>DindowsVista</option>
+            <option>Dindows95</option>
+        </select>
+        <button onclick="startOS()" id="start">select</button>
+        </div>
+        <h3 id="time"></h3>
+<script>
+    var otherOut="";
+var openedFilePath = null;
+var editorBufferAddr = 0x80030000;
+var x;
+var y;
+const canvas = document.getElementById("OS");
+const ctx = canvas.getContext("2d");
+var os;
+var currentPath="thisPC";
+const out = document.getElementById("output");
+const apps = [
+        { name: "File Explorer", x: 100, y: 100, width: 100, height: 50, color: 'rgb(235,204,52)' },
+        { name: "Text Editor", x:100, y:200, width:75, height:100, color: 'rgb(255,255,255)'},
+        { name: "Start", x:5, y:770, width:50, height:30, color: 'rgb(255,255,255)'},
+        { name: "Shell", x:100, y:300, width:75, height:75, color: 'rgb(2,2,2)'}
+];
+let fileHitboxes = [];
+canvas.addEventListener('click', handleSingleClick);
+canvas.addEventListener('dblclick', handleDoubleClick);
+/*canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        detectClickOnApp(x, y);
+});*/
+function handleSingleClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+
+    detectClickOnApp(x, y);
+}
+
+function handleDoubleClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+
+    fileHitboxes.forEach(hit => {
+        if (
+            x >= hit.x &&
+            x <= hit.x + hit.width &&
+            y >= hit.y &&
+            y <= hit.y + hit.height
+        ) {
+            const fullPath = hit.path + "/" + hit.name;
+            const file = bus.getFile(fullPath);
+
+            if (typeof file === "object") {
+    // Folder → open explorer
+    fileHitboxes = [];
+    openFileExplorer(fullPath);
+} else {
+    // File → display it
+    openedFilePath = fullPath;
+    bus.displayFile(file);
+}
+        }
+    });
+}
+document.getElementById("file").style.display="none";
+
+class Bus {
+    constructor(outputElement) {
+        this.output = outputElement;
+        this.rom = new Uint8Array(64 * 1024);       // .text
+        this.ram = new Uint8Array(8 * 1024 * 1024); // .data + .bss + heap + stack
+
+        this.sp_init = 0x807FFFFF; // stack top
+        this.heap_ptr = 0x80010000; // heap start
+        this.inputBuffer = [];
+
+        window.addEventListener("keydown",(e)=>{
+            if(e.key.length === 1){
+                this.inputBuffer.push(e.key.charCodeAt(0));
+            }
+            if(e.key === "Enter"){
+                this.inputBuffer.push(10);
+            }
+        });
+        this.fileExplorer=document.getElementById("file");
+        this.files = {
+            "OS":"dindowsOS.html",
+            "thisPC":{
+            "READMEWXP.HTM": "readmeWindowsXP.html",
+            "READMEW7.txt":"readmeWindows7.txt",
+            "docs":{
+                "PRO.txt":"hello.txt",
+                "RELNOTES":"relnotesWindowsXP.html",
+                "DindowsXP.png":"drawing.png",
+            },
+            "localDisc C:":{
+                "desktop":{
+                    ".file-explorer":{
+                        "the owner does not give you access to this folder":""
+                    },
+                    ".text-editor":{
+                        "the owner does not give you access to this folder":""
+                    }
+                },
+                "Users":{
+                    "default/localhost":{
+                        email:"localhost@ledgemail.com",
+                        pin:"",
+                        age:"0",
+                        "Downloads":{
+
+                        },
+                        "Documents":{
+
+                        },
+                        "Favorites":{
+
+                        },
+                        "Contacts":{
+
+                        },
+                        "Links":{
+
+                        },
+                        "Music":{
+
+                        },
+                        "Packages":{
+
+                        },
+                        "Saved_Games":{
+
+                        },
+                        "Searches":{
+
+                        },
+                        "Videos":{
+
+                        }
+                    }
+                }
+            },
+            "vista":{
+                "boot":{
+                    "en-us":{},
+                    "fonts":{},
+                    "bcd":"regf/",
+                },
+                "efi":{
+                    "minersoft":{
+                        "boot":{
+                            "fonts":{
+
+                            },
+                            "bcd":"regf�"
+                        }
+                    }
+                },
+                "sources":{
+                    "6.0.6000.16386_amd64":{
+                        "en-us":{
+
+                        }
+                    },
+                    "adprep":{},
+                    "dlmanifests":{},
+                    "en-us":{},
+                    "inf":{},
+                    "servicing":{},
+                    "servicingstackmisc":{},
+                    "spinstall":{},
+                    "appcompat.xsl":"appcompat.xsl",
+                    "appcompat_bidi.xsl":"appcompat_bidi.xsl"
+                },
+                "support":{},
+                "upgrade":{},
+                "bootmgr":"����"
+            },
+            "repair":{
+                "boot":{
+                    "bcd":"regf/"
+                },
+                main:()=>{
+
+                },
+                "sources":{},
+                "bootmgr":"����"
+            }
+        }
+        };
+
+        // zero .bss area
+        this.ram.fill(0, 0x80001000 - 0x80000000, 0x80010000 - 0x80000000);
+    }
+   saveFilesLocally(){
+    localStorage.setItem("files", JSON.stringify(this.files));
+}
+
+loadFilesFromLocalStorage(){
+    const data = localStorage.getItem("files");
+    if (data) {
+        this.files = JSON.parse(data);
+    }
+}
+saveRAMBufferToFile(path, addr) {
+
+    let text = "";
+    let byte;
+
+    while ((byte = this.read8(addr++)) !== 0) {
+        text += String.fromCharCode(byte);
+    }
+
+    const parts = path.split("/");
+    let current = this.files;
+
+    for (let i = 0; i < parts.length - 1; i++) {
+        current = current[parts[i]];
+    }
+
+    current[parts[parts.length - 1]] = text;
+
+    this.saveFilesLocally();
+}
+    getFile(path) {
+    const parts = path.split("/");
+    let current = this.files;
+
+    for (let part of parts) {
+        if (!current[part]) return null;
+        current = current[part];
+    }
+
+    return current;
+}
+readString(addr, maxLen = 1024) {
+    let str = "";
+    let byte;
+    let count = 0;
+
+    while (count < maxLen && (byte = this.read8(addr++)) !== 0) {
+        str += String.fromCharCode(byte);
+        count++;
+    }
+
+    if (count === maxLen) {
+        throw new Error("String exceeds maximum length");
+    }
+
+    return str;
+}
+    displayFile(file){
+        this.fileExplorer.style.display="block";
+        this.fileExplorer.setAttribute("src", file);
+    }
+    /*read8(addr) {
+        if (addr >= 0x00000000 && addr < 0x00010000) return this.rom[addr];
+        if (addr >= 0x80000000 && addr <= 0x807FFFFF) return this.ram[addr - 0x80000000];
+        if (addr === 0x10000000) return 0; // UART
+        throw new Error("Invalid read at 0x" + addr.toString(16));
+    }*/
+    read8(addr) {
+
+    if (addr >= 0x00000000 && addr < 0x00010000)return this.rom[addr];
+
+        if (addr >= 0x80000000 && addr <= 0x807FFFFF)
+            return this.ram[addr - 0x80000000];
+
+        if (addr === 0x10000000) return 0; // UART out
+
+        if (addr === 0x10000004) { // keyboard input
+            if (this.inputBuffer.length === 0) return 0;
+            return this.inputBuffer.shift();
+        }
+
+        throw new Error("Invalid read at 0x" + addr.toString(16));
+    }
+    write8(addr, value) {
+        if (addr >= 0x00000000 && addr < 0x00010000) throw new Error("Write to ROM at 0x" + addr.toString(16));
+        if (addr >= 0x80000000 && addr <= 0x807FFFFF) { 
+            this.ram[addr - 0x80000000] = value;
+            return;
+        }
+        if (addr === 0x10000000) { 
+            this.output.textContent += String.fromCharCode(value);
+            otherOut+=String.fromCharCode(value);
+            return;
+        }
+        throw new Error("Invalid write at 0x" + addr.toString(16));
+    }
+
+    read32(addr) {
+        return (
+            this.read8(addr) |
+            (this.read8(addr + 1) << 8) |
+            (this.read8(addr + 2) << 16) |
+            (this.read8(addr + 3) << 24)
+        ) >>> 0;
+    }
+
+    write32(addr, value) {
+        this.write8(addr, value & 0xff);
+        this.write8(addr + 1, (value >> 8) & 0xff);
+        this.write8(addr + 2, (value >> 16) & 0xff);
+        this.write8(addr + 3, (value >> 24) & 0xff);
+    }
+
+    malloc32(value) {
+    if (this.heap_ptr + 4 >= this.sp_init) {
+        throw new Error("Out of memory: heap collided with stack");
+    }
+
+    const addr = this.heap_ptr;
+    this.write32(addr, value);
+    this.heap_ptr += 4;
+    return addr;
+}
+
+loadFileToRAM(path, destAddr) {
+    const file = this.getFile(path);
+
+    if (!file || typeof file === "object") {
+        throw new Error("Invalid file path: " + path);
+    }
+
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(file);
+
+    for (let i = 0; i < bytes.length; i++) {
+        this.write8(destAddr + i, bytes[i]);
+    }
+
+    this.write8(destAddr + bytes.length, 0); // null terminate
+
+    return bytes.length;
+}
+}
+class RV32I {
+    constructor(bus) {
+        this.bus = bus;
+        this.regs = new Uint32Array(32);
+        this.pc = 0x00000000; // start in ROM
+    }
+    /*handleEcall() {
+        const a7 = this.regs[17]; // SBI function ID
+        const a0 = this.regs[10]; // first argument
+
+        // SBI legacy console putchar = 1
+        if (a7 === 1) {
+            this.bus.write8(0x10000000, a0 & 0xff);
+            return;
+        }
+
+        throw new Error("Unknown SBI call: " + a7);
+    }*/
+    /*handleEcall() {
+    const a7 = this.regs[17];
+    const a0 = this.regs[10];
+
+    // Console putchar
+    if (a7 === 1) {
+        this.bus.write8(0x10000000, a0 & 0xff);
+        return;
+    }
+
+    // File read syscall
+    if (a7 === 2) {
+        const path = this.bus.readString(a0);
+        const dest = this.regs[11]; // a1
+
+        const size = this.bus.loadFileToRAM(path, dest);
+
+        this.regs[10] = size; // return file size in a0
+        return;
+    }
+
+    throw new Error("Unknown SBI call: " + a7);
+}*/
+    handleEcall() {
+
+        const a7 = this.regs[17];
+        const a0 = this.regs[10];
+
+        // putchar
+        if (a7 === 1) {
+            this.bus.write8(0x10000000, a0 & 0xff);
+            return;
+        }
+
+        // getchar
+        if (a7 === 3) {
+            this.regs[10] = this.bus.read8(0x10000004);
+            return;
+        }
+
+        throw new Error("Unknown syscall " + a7);
+    }
+    step() {
+        const instr = this.bus.read32(this.pc);
+        const oldPC = this.pc;
+        this.pc += 4;
+
+        const opcode = instr & 0x7f;
+
+        switch (opcode) {
+            case 0x03: { // LOAD
+                const rd = (instr >> 7) & 0x1f;
+                const funct3 = (instr >> 12) & 0x7;
+                const rs1 = (instr >> 15) & 0x1f;
+                let imm = instr >> 20;
+                imm = (imm << 20) >> 20;
+                const addr = (this.regs[rs1] + imm) >>> 0;
+
+                if (funct3 === 0x2) { // LW
+                    this.regs[rd] = this.bus.read32(addr);
+                } else {
+                    throw new Error("Unsupported LOAD funct3 0x" + funct3.toString(16));
+                }
+                break;
+            }
+
+            case 0x23: { // STORE (already partially implemented)
+                const funct3 = (instr >> 12) & 0x7;
+                const rs1 = (instr >> 15) & 0x1f;
+                const rs2 = (instr >> 20) & 0x1f;
+
+                let imm = ((instr >> 7) & 0x1f) | (((instr >> 25) & 0x7f) << 5);
+                imm = (imm << 20) >> 20;
+
+                const addr = (this.regs[rs1] + imm) >>> 0;
+
+                if (funct3 === 0x0) { // SB
+                    this.bus.write8(addr, this.regs[rs2] & 0xff);
+                } else if (funct3 === 0x2) { // SW
+                    this.bus.write32(addr, this.regs[rs2]);
+                } else {
+                    throw new Error("Unsupported STORE funct3 0x" + funct3.toString(16));
+                }
+                break;
+            }
+            /*case 0x23: { // STORE
+                const funct3 = (instr >> 12) & 0x7;
+                const rs1 = (instr >> 15) & 0x1f;
+                const rs2 = (instr >> 20) & 0x1f;
+
+                let imm =
+                    ((instr >> 7) & 0x1f) |
+                    (((instr >> 25) & 0x7f) << 5);
+
+                imm = (imm << 20) >> 20;
+
+                const addr = (this.regs[rs1] + imm) >>> 0;
+
+                if (funct3 === 0x0) { // SB
+                    this.bus.write8(addr, this.regs[rs2] & 0xff);
+                }
+
+                break;
+            }*/
+            case 0x37: { // LUI
+                const rd = (instr >> 7) & 0x1f;
+                const imm = instr & 0xfffff000;
+                this.regs[rd] = imm >>> 0;
+                break;
+            }
+            case 0x73: { // SYSTEM (ECALL)
+                const funct3 = (instr >> 12) & 0x7;
+
+                if (funct3 === 0x0) {
+                    // ECALL
+                    this.handleEcall();
+                    break;
+                }
+
+                throw new Error("Unknown SYSTEM instruction");
+            }
+
+            case 0x13: { // ADDI
+                const rd = (instr >> 7) & 0x1f;
+                const rs1 = (instr >> 15) & 0x1f;
+                let imm = instr >> 20;
+                imm = (imm << 20) >> 20;
+                this.regs[rd] = (this.regs[rs1] + imm) >>> 0;
+                break;
+            }
+
+            case 0x63: { // BEQ
+                const rs1 = (instr >> 15) & 0x1f;
+                const rs2 = (instr >> 20) & 0x1f;
+
+                let imm =
+                    ((instr >> 31) << 12) |
+                    (((instr >> 7) & 1) << 11) |
+                    (((instr >> 25) & 0x3f) << 5) |
+                    (((instr >> 8) & 0xf) << 1);
+
+                imm = (imm << 19) >> 19;
+
+                if (this.regs[rs1] === this.regs[rs2]) {
+                    this.pc = (oldPC + imm) >>> 0;
+                }
+                break;
+            }
+
+           case 0x6f: { // JAL
+                const rd = (instr >> 7) & 0x1f;
+
+                let imm =
+                    ((instr >> 31) << 20) |
+                    (((instr >> 12) & 0xff) << 12) |
+                    (((instr >> 20) & 1) << 11) |
+                    (((instr >> 21) & 0x3ff) << 1);
+
+                imm = (imm << 11) >> 11;
+
+                this.regs[rd] = this.pc;
+                this.pc = (oldPC + imm) >>> 0;
+                break;
+            }
+
+            default:
+                throw new Error("Unknown opcode 0x" + opcode.toString(16));
+        }
+
+        this.regs[0] = 0;
+        return true;
+    }
+    printNumber(addr) {
+        let num = this.bus.read32(addr);
+        let str = num.toString();
+        for (let i = 0; i < str.length; i++) {
+            this.bus.write8(0x10000000, str.charCodeAt(i));
+        }
+        this.bus.write8(0x10000000, 10); // newline
+    }
+}
+
+var tinted=false;
+const bus = new Bus(out);
+const cpu = new RV32I(bus);
+function tintWindows(){
+    ctx.fillStyle='rgb(0,0,100)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fill();
+    tinted=true;
+}
+async function alertUser(err){
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(0,0,255)';
+    ctx.fillRect(0,0,800,800);
+    ctx.fillStyle='rgb(255,255,255)';
+    ctx.font='120px Arial';
+    ctx.fillText(":)",350,300,400);
+    ctx.font='15px Arial';
+    ctx.fillText(`ERROR:${err}`,350,380,400);
+    ctx.fillStyle='rgb(200,200,200)';
+    ctx.fillRect(480,600,100,40);
+    ctx.fillRect(200,600,100,40);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillText("Shut down",210,625,400);
+    ctx.fillText("Reboot",490,625,400);
+    for(var hgv=0;hgv<500;hgv++){
+        if ((x >= 480 && x <= 480 + 100 &&
+                y >= 600 && y <= 600 + 40)) {
+                startOS();
+        }
+        if ((x >= 200 && x <= 200 + 100 &&
+                y >= 600 && y <= 600 + 40)) {
+                shutDown();
+        }
+        await sleep(100)
+    }
+    ctx.fill();
+}
+function drawBottomPanel(){
+
+}
+async function shutDown(){
+    ctx.fillStyle='black';
+    ctx.fillRect(0,0,800,800);
+    await sleep(1000);
+    ctx.fillStyle='orange';
+    ctx.fillText("it is now safe to turn off your computer",400,400)
+    ctx.fill();
+}
+function openFileExplorer(path = currentPath) {
+    fileHitboxes = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "white";
+    ctx.font = "18px Arial";
+
+    const dir = bus.getFile(path);
+
+    if (!dir || typeof dir !== "object") {
+        ctx.fillText("Invalid directory", 20, 40);
+        return;
+    }
+
+    currentPath = path;
+
+    let y = 40;
+    let index = 0;
+
+    Object.keys(dir).forEach(key => {
+        ctx.fillStyle = typeof dir[key] === "object"
+            ? "rgb(100,200,255)"   // folder
+            : "rgb(200,200,200)";  // file
+
+        ctx.fillText(key, 40, y);
+
+        // store clickable area
+        fileHitboxes.push({
+            name: key,
+            path: path,
+            x: 40,
+            y: y - 18,
+            width: ctx.measureText(key).width,
+            height: 20
+        });
+
+        y += 30;
+        index++;
+    });
+}
+function sleep(ms) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    function check() {
+      if (Date.now() - start >= ms) {
+        resolve();
+      } else {
+        requestAnimationFrame(check);
+      }
+    }
+    check();
+  });
+}
+
+/*async function run() {
+  console.log("Waiting...");
+  await sleep(1000); // wait 1 second
+  console.log("Done after 1 second");
+}*/
+async function start95(){
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95_",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95_",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95_",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting windows 95",50,13);
+    await sleep(250);
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(5,5,5)';ctx.fillRect(0,0,800,800);ctx.fill();
+    ctx.strokeStyle='rgb(225,225,225)';
+    ctx.font='15px Arial';
+    ctx.strokeText("starting dindows 95_",50,13);
+    await sleep(250);
+    ctx.fillStyle='rgb(17,225,240)';
+    ctx.fillRect(0,0,800,800);
+    ctx.fillStyle='rgb(79,27,8)';
+    ctx.fillRect(475,100,80,80);
+    ctx.fillStyle='rgb(150,0,0)';
+    ctx.fillRect(479,105,35,35);
+    ctx.fillStyle='rgb(229,240,17)';
+    ctx.fillRect(518,105,35,35);
+    ctx.fillStyle='rgb(0,100,0)';
+    ctx.fillRect(479,143,35,35);
+    ctx.fillStyle='rgb(0,0,100)';
+    ctx.fillRect(518,143,35,35)
+    ctx.strokeStyle='white';
+    ctx.strokeText("MinersoftⓇ",400,200,400);
+    ctx.stroke();
+    ctx.font = "70px Arial";
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillText("Dindows",420,260,400);
+    ctx.fillStyle='rgb(255,255,255)';
+    ctx.fillText("95",685,260,350)
+    await sleep(1000);
+    drawApps();
+}
+async function vistaStartup(){
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='blue';
+    ctx.beginPath();
+    ctx.arc(440,440,75,0,359,false);
+    ctx.fill();
+    ctx.closePath();
+    ctx.fillStyle='blue';
+    ctx.fillRect(0,0,800,800);
+    ctx.fillStyle='rgb(79,27,8)';
+    ctx.fillRect(400,400,80,80);
+    ctx.fillStyle='rgb(150,0,0)';
+    ctx.fillRect(404,405,35,35);
+    ctx.fillStyle='rgb(229,240,17)';
+    ctx.fillRect(443,405,35,35);
+    ctx.fillStyle='rgb(0,100,0)';
+    ctx.fillRect(404,443,35,35);
+    ctx.fillStyle='rgb(0,0,100)';
+    ctx.fillRect(443,443,35,35)
+    ctx.stroke();
+    await sleep(2000);
+    drawApps();
+}
+
+async function XPstartup(){
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='black';
+    ctx.fillRect(0,0,800,800);
+    ctx.fill();
+    ctx.strokeStyle='white';
+    ctx.strokeRect(400,300,200,50);
+    ctx.stroke();
+    ctx.fillStyle='rgb(79,27,8)';
+    ctx.fillRect(475,100,80,80);
+    ctx.fillStyle='rgb(150,0,0)';
+    ctx.fillRect(479,105,35,35);
+    ctx.fillStyle='rgb(229,240,17)';
+    ctx.fillRect(518,105,35,35);
+    ctx.fillStyle='rgb(0,100,0)';
+    ctx.fillRect(479,143,35,35);
+    ctx.fillStyle='rgb(0,0,100)';
+    ctx.fillRect(518,143,35,35)
+    ctx.strokeStyle='white';
+    ctx.strokeText("MinersoftⓇ",400,200,400);
+    ctx.stroke();
+    ctx.font = "70px Arial";
+    ctx.fillStyle='rgb(255,255,255)';
+    ctx.fillText("Dindows",420,260,400);
+    ctx.font = "30px Arial";
+    ctx.fillStyle='orange';
+    ctx.fillText("xp",685,240)
+    for(var f=0;f<2;f++){
+    await sleep(100);
+    ctx.fillStyle='rgb(0,100,0)';
+    ctx.fillRect(405,303,10,45);
+    await sleep(100);
+    ctx.fillRect(420,303,10,45);
+    await sleep(100);
+    ctx.fillRect(435,303,10,45);
+    await sleep(100);
+    ctx.fillRect(450,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(405,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(465,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(420,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(480,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(435,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(495,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(450,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(510,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(465,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(525,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(480,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(540,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(495,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(555,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(510,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(570,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(525,303,10,45);
+    ctx.fillStyle='rgb(0,100,0)';
+    await sleep(100);
+    ctx.fillRect(585,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(540,303,10,45);
+    await sleep(100);
+    ctx.fillStyle='rgb(0,0,0)';
+    ctx.fillRect(555,303,10,45);
+    await sleep(100);
+    ctx.fillRect(570,303,10,45);
+    await sleep(100);
+    ctx.fillRect(585,303,10,45);
+    ctx.fill();
+    }
+    drawApps();
+}
+// --- Load program into ROM ---
+function drawApps() {
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='rgb(17,225,240)';
+    ctx.fillRect(0,0,800,800);
+        apps.forEach(app => {
+            ctx.fillStyle = app.color;
+            ctx.beginPath();
+            ctx.fillRect(app.x, app.y, app.width, app.height);
+            ctx.fill();
+            ctx.closePath();
+            ctx.fillStyle = "black";
+            ctx.font = "16px Arial";
+            ctx.fillText(app.name, app.x + (app.width/11), app.y + (app.height/1.5));
+        });
+    }
+ function detectClickOnApp(x, y) {
+        apps.forEach(app => {
+            if (x >= app.x && x <= app.x + app.width &&
+                y >= app.y && y <= app.y + app.height) {
+                //alert(`You clicked on ${app.name}!`);
+                if(app.name==="File Explorer"){
+                    openFileExplorer("thisPC");
+                }
+                if(app.name==="Text Editor"){
+                    openTextEditor();
+                }
+                if(app.name==="Shell"){
+                    openShell();
+                }
+
+            }
+        });
+    }
+   function openTextEditor(path) {
+
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,800,800);
+
+    ctx.fillStyle = "black";
+    ctx.font = "16px monospace";
+
+    if (path) {
+        const file = bus.getFile(path);
+
+        if (typeof file === "string") {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(file);
+
+            for (let i = 0; i < bytes.length; i++) {
+                bus.write8(editorBufferAddr + i, bytes[i]);
+            }
+
+            bus.write8(editorBufferAddr + bytes.length, 0);
+        }
+    }
+
+    renderEditor();
+}
+function renderEditor() {
+
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,800,800);
+
+    ctx.fillStyle = "black";
+    ctx.font = "16px monospace";
+    
+    let text = "";
+    let addr = editorBufferAddr;
+    let byte;
+
+    while ((byte = bus.read8(addr++)) !== 0) {
+        text += String.fromCharCode(byte);
+    }
+
+    const lines = text.split("\n");
+
+    let y = 30;
+    for (let line of lines) {
+        ctx.fillText(line, 20, y);
+        y += 20;
+    }
+}
+    function displayTime(){
+        	document.getElementById('time').innerHTML = new Date().toLocaleString();
+    }
+function writeROM32(addr, value) {
+    bus.rom[addr] = value & 0xff;
+    bus.rom[addr + 1] = (value >> 8) & 0xff;
+    bus.rom[addr + 2] = (value >> 16) & 0xff;
+    bus.rom[addr + 3] = (value >> 24) & 0xff;
+}
+function startOS(){
+        os=document.getElementById("select").value;
+        document.getElementById("form").style.display="none";
+        if(os=="DindowsXP")XPstartup();
+        if(os=="DindowsVista")vistaStartup();
+        if(os=="Dindows95")start95();
+        if(os!=="DindowsXP"&&os!=="DindowsVista"&&os!=="Dindows95")drawApps();
+}
+
+// a0 = 'H'
+writeROM32(0x00000000, 0x04800513); // addi a0,x0,72
+
+// a7 = 1 (SBI_CONSOLE_PUTCHAR)
+writeROM32(0x00000004, 0x00100893); // addi a7,x0,1
+
+// ecall
+writeROM32(0x00000008, 0x00000073);
+
+// a0 = 'i'
+writeROM32(0x0000000c, 0x06900513);
+
+// ecall
+writeROM32(0x00000010, 0x00000073);
+
+// newline
+writeROM32(0x00000014, 0x00A00513);
+
+// ecall
+writeROM32(0x00000018, 0x00000073);
+
+// halt
+writeROM32(0x0000001c, 0x0000006f);
+
+
+// Run
+function shell(cmd){
+
+    const args = cmd.split(" ");
+
+    if(args[0] === "ls"){
+        console.log(Object.keys(bus.files));
+    }
+
+    if(args[0] === "cat"){
+        console.log(bus.getFile(args[1]));
+    }
+
+    if(args[0] === "clear"){
+        out.textContent="";
+    }
+}
+function ctxShell(cmd){
+
+    const args = cmd.split(" ");
+
+    if(args[0] === "ls"){
+        ctx.fillText(Object.keys(bus.files));
+    }
+
+    if(args[0] === "cat"){
+        ctx.fillText(bus.getFile(args[1]));
+    }
+
+    if(args[0] === "clear"){
+        out.textContent="";
+        openShell();
+    }
+}
+function openShell(){
+    ctx.clearRect(0,0,800,800);
+    ctx.fillStyle='white';
+    ctx.font='10px Arial';
+    // print >
+    writeROM32(0x00,0x03E00513); // a0='>'
+    writeROM32(0x04,0x00100893); // a7=1
+    writeROM32(0x08,0x00000073); // ecall
+
+    // getchar
+    writeROM32(0x0C,0x00300893); // a7=3
+    writeROM32(0x10,0x00000073); // ecall
+
+    // print char
+    writeROM32(0x14,0x00100893);
+    writeROM32(0x18,0x00000073);
+
+    // jump back
+    writeROM32(0x1C,0xFE1FF06F);
+    ctx.fillText("C:>_",100,100);
+    ctx.fill();
+    shell();
+}
+ let steps = 0;
+const MAX_STEPS = 1000;
+
+while (steps < MAX_STEPS) {
+    try {
+        if (!cpu.step()) break;
+       
+        steps++;
+    } catch (e) {
+        console.error(e);
+        break;
+    }
+}
+window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "s") {
+    e.preventDefault();
+    if (openedFilePath) {
+        bus.saveRAMBufferToFile(openedFilePath, editorBufferAddr);
+        alert("File saved.");
+    }
+    return;
+    }
+    if (e.ctrlKey && e.key === "l") {
+    e.preventDefault();
+    if (openedFilePath) {
+        bus.loadFilesFromLocalStorage();
+        alert("File loaded");
+    }
+    return;
+    }
+    if (!openedFilePath) return;
+
+    let addr = editorBufferAddr;
+    let byte;
+
+    // find end of string
+    while ((byte = bus.read8(addr)) !== 0) {
+        addr++;
+    }
+
+    if (e.key.length === 1) {
+        bus.write8(addr, e.key.charCodeAt(0));
+        bus.write8(addr + 1, 0);
+    }
+
+    if (e.key === "Backspace") {
+        if (addr > editorBufferAddr) {
+            bus.write8(addr - 1, 0);
+        }
+    }
+
+    if (e.key === "Enter") {
+        bus.write8(addr, 10);
+        bus.write8(addr + 1, 0);
+    }
+
+    renderEditor();
+});
+setInterval(()=>{
+    displayTime();
+},1000)
+setInterval(()=>{
+    otherOut=otherOut.concat(String.fromCharCode(value))
+    out.textContent =
+    `\n---\n${otherOut}
+    x1 = ${cpu.regs[1]}
+    x2 = ${cpu.regs[2]}
+    x3 = ${cpu.regs[3]}
+    pc = 0x${cpu.pc.toString(16)}
+    ${fh}`;
+},1000)
+var fh;
+if(tinted){
+    fh='sorry, your windows have tinted.';
+}else{
+    fh='';
+}
+out.textContent =
+`\n---\n${otherOut}
+x1 = ${cpu.regs[1]}
+x2 = ${cpu.regs[2]}
+x3 = ${cpu.regs[3]}
+pc = 0x${cpu.pc.toString(16)}
+${fh}`;
+</script>
+</body>
+</html>

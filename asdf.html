@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RV32I Linux-Style Emulator</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            color: azure;
+            background-color: black;
+            font-family: monospace;
+        }
+        iframe{
+            display:block;
+            background-color: aliceblue;
+        }
+    </style>
+</head>
+<body>
+<h3>Minersoft Dindows XP</h3>
+<pre id="output"></pre>
+<p>file Explorer</p>
+<iframe id="file" src=""></iframe>
+<button onclick="bus.displayFile('readmeWindowsXP.html');">open README</button>
+<script>
+const out = document.getElementById("output");
+
+// --- Bus: memory + UART ---
+class Bus {
+    constructor(outputElement) {
+        this.output = outputElement;
+        this.rom = new Uint8Array(64 * 1024);       // .text
+        this.ram = new Uint8Array(8 * 1024 * 1024); // .data + .bss + heap + stack
+
+        this.sp_init = 0x807FFFFF; // stack top
+        this.heap_ptr = 0x80010000; // heap start
+        this.fileExplorer=document.getElementById("file");
+        this.files = {
+            "thisPC/README.HTM": "readmeWindowsXP.html",
+            "thisPC/docs/PRO.txt":"hello.txt",
+            "thisPC/docs/RELNOTES":"relnotesWindowsXP.html",
+            "thisPC/docs/DindowsXP.png":"drawing.png"
+        };
+        // zero .bss area
+        this.ram.fill(0, 0x80001000 - 0x80000000, 0x80010000 - 0x80000000);
+    }
+    readString(addr) {
+        let str = "";
+        let byte;
+        while ((byte = this.read8(addr++)) !== 0) {
+            str += String.fromCharCode(byte);
+        }
+        return str;
+    }
+    displayFile(file){
+        this.fileExplorer.setAttribute("src", file);
+    }
+    read8(addr) {
+        if (addr >= 0x00000000 && addr < 0x00010000) return this.rom[addr];
+        if (addr >= 0x80000000 && addr <= 0x807FFFFF) return this.ram[addr - 0x80000000];
+        if (addr === 0x10000000) return 0; // UART
+        throw new Error("Invalid read at 0x" + addr.toString(16));
+    }
+
+    write8(addr, value) {
+        if (addr >= 0x00000000 && addr < 0x00010000) throw new Error("Write to ROM at 0x" + addr.toString(16));
+        if (addr >= 0x80000000 && addr <= 0x807FFFFF) { 
+            this.ram[addr - 0x80000000] = value;
+            return;
+        }
+        if (addr === 0x10000000) { 
+            this.output.textContent += String.fromCharCode(value);
+            return;
+        }
+        throw new Error("Invalid write at 0x" + addr.toString(16));
+    }
+
+    read32(addr) {
+        return (
+            this.read8(addr) |
+            (this.read8(addr + 1) << 8) |
+            (this.read8(addr + 2) << 16) |
+            (this.read8(addr + 3) << 24)
+        ) >>> 0;
+    }
+
+    write32(addr, value) {
+        this.write8(addr, value & 0xff);
+        this.write8(addr + 1, (value >> 8) & 0xff);
+        this.write8(addr + 2, (value >> 16) & 0xff);
+        this.write8(addr + 3, (value >> 24) & 0xff);
+    }
+
+    malloc32(value) {
+        const addr = this.heap_ptr;
+        this.write32(addr, value);
+        this.heap_ptr += 4;
+        return addr;
+    }
+}
+const bus = new Bus(out);
+
+// --- CPU: RV32I minimal + LOAD/STORE ---
+class RV32I {
+    constructor(bus) {
+        this.bus = bus;
+        this.regs = new Uint32Array(32);
+        this.pc = 0x00000000; // start in ROM
+        this.regs[2] = bus.sp_init; // stack pointer x2
+    }
+
+    handleEcall() {
+        const a7 = this.regs[17]; // SBI function ID
+        const a0 = this.regs[10]; // first argument
+
+        // SBI legacy console putchar = 1
+        if (a7 === 1) {
+            this.bus.write8(0x10000000, a0 & 0xff);
+            return;
+        }
+
+        throw new Error("Unknown SBI call: " + a7);
+    }
+
+    step() {
+        const instr = this.bus.read32(this.pc);
+        const oldPC = this.pc;
+        this.pc += 4;
+
+        const opcode = instr & 0x7f;
+
+        switch (opcode) {
+            case 0x03: { // LOAD
+                const rd = (instr >> 7) & 0x1f;
+                const funct3 = (instr >> 12) & 0x7;
+                const rs1 = (instr >> 15) & 0x1f;
+                let imm = instr >> 20;
+                imm = (imm << 20) >> 20;
+                const addr = (this.regs[rs1] + imm) >>> 0;
+
+                if (funct3 === 0x2) { // LW
+                    this.regs[rd] = this.bus.read32(addr);
+                } else {
+                    throw new Error("Unsupported LOAD funct3 0x" + funct3.toString(16));
+                }
+                break;
+            }
+
+            case 0x23: { // STORE
+                const funct3 = (instr >> 12) & 0x7;
+                const rs1 = (instr >> 15) & 0x1f;
+                const rs2 = (instr >> 20) & 0x1f;
+
+                let imm = ((instr >> 7) & 0x1f) | (((instr >> 25) & 0x7f) << 5);
+                imm = (imm << 20) >> 20;
+
+                const addr = (this.regs[rs1] + imm) >>> 0;
+
+                if (funct3 === 0x0) { // SB
+                    this.bus.write8(addr, this.regs[rs2] & 0xff);
+                } else if (funct3 === 0x2) { // SW
+                    this.bus.write32(addr, this.regs[rs2]);
+                } else {
+                    throw new Error("Unsupported STORE funct3 0x" + funct3.toString(16));
+                }
+                break;
+            }
+
+            case 0x37: { // LUI
+                const rd = (instr >> 7) & 0x1f;
+                const imm = instr & 0xfffff000;
+                this.regs[rd] = imm >>> 0;
+                break;
+            }
+
+            case 0x73: { // SYSTEM (ECALL)
+                const funct3 = (instr >> 12) & 0x7;
+                if (funct3 === 0x0) this.handleEcall();
+                else throw new Error("Unknown SYSTEM instruction");
+                break;
+            }
+
+            case 0x13: { // ADDI
+                const rd = (instr >> 7) & 0x1f;
+                const rs1 = (instr >> 15) & 0x1f;
+                let imm = instr >> 20;
+                imm = (imm << 20) >> 20;
+                this.regs[rd] = (this.regs[rs1] + imm) >>> 0;
+                break;
+            }
+
+            case 0x63: { // BEQ
+                const rs1 = (instr >> 15) & 0x1f;
+                const rs2 = (instr >> 20) & 0x1f;
+
+                let imm =
+                    ((instr >> 31) << 12) |
+                    (((instr >> 7) & 1) << 11) |
+                    (((instr >> 25) & 0x3f) << 5) |
+                    (((instr >> 8) & 0xf) << 1);
+
+                imm = (imm << 19) >> 19;
+
+                if (this.regs[rs1] === this.regs[rs2]) {
+                    this.pc = (oldPC + imm) >>> 0;
+                }
+                break;
+            }
+
+            case 0x6f: // JAL (halt)
+                return false;
+
+            default:
+                throw new Error("Unknown opcode 0x" + opcode.toString(16));
+        }
+
+        this.regs[0] = 0;
+        return true;
+    }
+
+    printNumber(addr) {
+        let num = this.bus.read32(addr);
+        let str = num.toString();
+        for (let i = 0; i < str.length; i++) {
+            this.bus.write8(0x10000000, str.charCodeAt(i));
+        }
+        this.bus.write8(0x10000000, 10); // newline
+    }
+}
+const cpu = new RV32I(bus);
+// --- ROM loader ---
+function writeROM32(bus, addr, value) {
+    bus.write32(addr, value);
+}
+
+// --- Initialize Bus + CPU ---
+
+
+// --- Program in ROM ---
+// print 'H'
+writeROM32(bus, 0x0000, 0x04800513); // addi a0,x0,72
+writeROM32(bus, 0x0004, 0x00100893); // addi a7,x0,1
+writeROM32(bus, 0x0008, 0x00000073); // ecall
+
+// print 'i'
+writeROM32(bus, 0x000C, 0x06900513); // addi a0,x0,105
+writeROM32(bus, 0x0010, 0x00000073); // ecall
+
+// newline
+writeROM32(bus, 0x0014, 0x00A00513); // addi a0,x0,10
+writeROM32(bus, 0x0018, 0x00000073); // ecall
+
+// halt
+writeROM32(bus, 0x001C, 0x0000006f);
+
+// --- Memory examples ---
+// .data variable
+bus.write32(0x80000000, 123);
+
+// heap allocation
+const heapAddr = bus.malloc32(456);
+
+// stack variable
+cpu.regs[2] -= 4;
+bus.write32(cpu.regs[2], 789);
+
+// --- Run emulator ---
+let steps = 0;
+const MAX_STEPS = 1000;
+while (steps < MAX_STEPS) {
+    try {
+        if (!cpu.step()) break;
+        steps++;
+    } catch (e) {
+        console.error(e);
+        break;
+    }
+}
+
+// --- Print CPU state ---
+out.textContent +=
+`\n---\nx1 = ${cpu.regs[1]}
+x2 = ${cpu.regs[2]}
+x3 = ${cpu.regs[3]}
+pc = 0x${cpu.pc.toString(16)}`;
+
+// --- Print memory values ---
+cpu.printNumber(0x80000000);   // .data
+cpu.printNumber(heapAddr);     // heap
+cpu.printNumber(cpu.regs[2]);  // stack
+</script>
+</body>
+</html>
