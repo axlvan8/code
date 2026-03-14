@@ -19,6 +19,14 @@
       DIRT: 40,
       STONE: 50,
     };
+    let playerZ = 0;     // real height
+    let velZ = 0;
+
+    const gravity = -0.45;
+    const jumpPower = 9;
+
+    const groundLevel = 15;
+    let sun = 1;
     let blockMap = [];
     var inventoryItemsX=[150]
     var scrollspeed=1;
@@ -48,7 +56,8 @@
     var tx;
     var ty;
     var tz;
-    var fps=0;
+    let lastTime = performance.now();
+    let FPS = 0;
     var counter=0;
     var iterator;
     var iterator2;
@@ -84,6 +93,7 @@
     var notmuchuse;
     var plane=[1,0];
     var alpha=255;
+    let renderQueue = [];
     var red=0;
     var green=0;
     var blue=0;
@@ -115,7 +125,9 @@
     var td;
     var rate;
     const PIXEL = 4; // size of one pixel in item icons
-
+    const BLOCK_SIZE = 34;
+    const PLAYER_HEIGHT = BLOCK_SIZE * 1.7;
+    playerY = PLAYER_HEIGHT;
     const C = {
   D: "#4fd1ff", // diamond
   I: "#cfcfcf", // iron
@@ -267,7 +279,52 @@ const items = [
  }
  
 
+class Mob {
 
+  constructor(x,y){
+    this.x = x;
+    this.y = y;
+    this.size = 30;
+  }
+
+  update(){
+
+    const dx = this.x - x;
+    const dy = this.y - y;
+
+    this.dist = Math.sqrt(dx*dx + dy*dy);
+    
+    this.angle = Math.atan2(dx,dy) - dir[0];
+    const speed = 0.3;
+
+this.x -= (this.x-x)*0.002;
+this.y -= (this.y-y)*0.002;
+  }
+
+ draw(){
+  if(Math.abs(this.angle) > Math.PI/2) return;
+  if(this.dist < 5 || this.dist > 500) return;
+
+  const scale = 400 / this.dist;
+
+  const screenX =
+    canvas.width/2 +
+    (this.angle/(Math.PI/3))*canvas.width;
+
+  const height = this.size * scale;
+
+  ctx.fillStyle="green";
+
+  ctx.fillRect(
+    screenX-height/2,
+    canvas.height/2+ playerZ -height+horizon,
+    height,
+    height
+  );
+
+}
+
+}
 class tree extends GameObject {
   update() {
     const dx = wx - x;
@@ -297,8 +354,88 @@ class tree extends GameObject {
       this.camX * scale / cam.clipping + canvas.width / 2;
 
     // ground anchored
+    this.screenY = canvas.height / 2 + playerY * scale + horizon;
+    // how "side-on" the tree is (−1 … 1)
+    this.side = Math.max(-1, Math.min(1, this.camX / this.camY));
+  }
+
+  draw(){
+
+    const baseX = this.x;
+    const baseZ = this.y;
+
+    // ---- trunk (4 blocks tall) ----
+    for(let i=0;i<4;i++){
+        drawRealCube(
+            baseX,
+            i*34,
+            baseZ,
+            34,
+            "brown"
+        );
+    }
+
+    // ---- leaves layer 1 ----
+    for(let lx=-1; lx<=1; lx++){
+        for(let lz=-1; lz<=1; lz++){
+            drawRealCube(
+                baseX + lx*34,
+                4*34,
+                baseZ + lz*34,
+                34,
+                "green"
+            );
+        }
+    }
+
+    // ---- leaves top ----
+    drawRealCube(
+        baseX,
+        5*34,
+        baseZ,
+        34,
+        "green"
+    );
+}
+}
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
+}
+// Example: getRandomInt(1, 10) can return 1, 2, ..., 9
+
+class movingBlock extends GameObject {
+  update() {
+    const dx = this.x - x;
+    const dy = this.y - y;
+
+    const sin = Math.sin(dir[0]);
+    const cos = Math.cos(dir[0]);
+
+    // camera space
+    this.camX = dx * cos - dy * sin;
+    this.camY = dx * sin + dy * cos;
+
+    if (this.camY <= 0.1) {
+      this.visible = false;
+      return;
+    }
+    this.x += (Math.random()-0.5)*0.8;
+    this.y += (Math.random()-0.5)*0.8;
+
+    const scale = cam.buffer / this.camY;
+
+    this.trunkW = this.width * scale;
+    this.trunkH = this.height * scale - 1;
+    this.leafSize = this.trunkW * 2.2;
+
+    this.screenX =
+      this.camX * scale / cam.clipping + canvas.width / 2;
+
+    // ground anchored
     this.screenY =
-      canvas.height / 2 + playerY * scale;
+      canvas.height / 2 + playerY * scale + horizon;
 
     // how "side-on" the tree is (−1 … 1)
     this.side = Math.max(-1, Math.min(1, this.camX / this.camY));
@@ -329,22 +466,7 @@ class tree extends GameObject {
       this.trunkH
     );
 
-    /* ───── leaves front ───── */
-    const leafX = this.screenX - this.leafSize / 2;
-    const leafY = this.screenY - this.trunkH - this.leafSize * 0.9;
-
-    ctx.fillStyle = "rgb(60,160,60)";
-    ctx.fillRect(leafX, leafY, this.leafSize, this.leafSize);
-
-    /* ───── leaves side ───── */
-    ctx.fillStyle = `rgba(0,0,0,${darker + 0.1})`;
-    ctx.fillRect(
-      leafX + sideOffset,
-      leafY,
-      this.leafSize * 0.35,
-      this.leafSize
-    );
-
+    
     /* ───── ground shadow ───── */
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.fillRect(
@@ -355,9 +477,13 @@ class tree extends GameObject {
     );
   }
 }
-
+let mobs = [
+      new Mob(200,200),
+      new Mob(400,100),
+      new Mob(-150,300)
+    ];
     var ne=new tree(100,10,ctx,70,30);
-    
+    var df=new movingBlock(150,10,ctx,70,30);
     setup();
     
     function drawCloud(x, y, size) {
@@ -372,7 +498,8 @@ class tree extends GameObject {
   ctx.closePath();
   ctx.fill();
 }
-function raycastBlock(maxDist = 140, step = 4) {
+    
+function raycastBlock(maxDist = 140, step = 2) {
   const sin = Math.sin(dir[0]);
   const cos = Math.cos(dir[0]);
 
@@ -388,13 +515,14 @@ function raycastBlock(maxDist = 140, step = 4) {
 
     const tileX = Math.floor(rx / 34);
     const tileY = Math.floor(ry / 34);
-
+    
     // only check when entering a new tile
     if (tileX !== lastTileX || tileY !== lastTileY) {
       const idx = tileX + tileY * grdw;
-
+      
       if (idx >= 0 && idx < blockMap.length) {
         if (blockMap[idx] !== BLOCK.AIR) {
+          
           return {
             hitIndex: idx,
             hitX: tileX,
@@ -631,10 +759,10 @@ function generateGrid() {
   plane[1] = Math.cos(dir[0] + Math.PI / 2);
 
   // Start drawing from horizon downwards
-  for (let dy = horizon; dy < 180; dy += resolution) {
+  for (let dy = horizon; dy < canvas.height; dy += resolution) {
 
     // Perspective depth (your math)
-    let rowDepth = playerY * (180 / (dy - horizon));
+    let rowDepth = (playerY + playerZ) * (180 / (dy - horizon));
 
     // World position at left edge
     let wx = x + rowDepth * (dir[1] - plane[0]);
@@ -747,7 +875,7 @@ function getRandomIntInclusive(min, max) {
     function drawSky(x){
       //${darkness}
       ctx.fillStyle=`rgb(100,200,${darknessSk})`;
-      ctx.fillRect(x, 0, canvas.width, (canvas.height / 2)+5);
+      ctx.fillRect(x, 0, canvas.width, canvas.height+5);
       drawSun(100-x,100);
       drawCloud(25-x,150,50);drawCloud(225-x,30,50);drawCloud(425-x,120,50);
     }
@@ -761,10 +889,13 @@ function getRandomIntInclusive(min, max) {
 if (k >= "1" && k <= "9") {
   selectedSlot = Number(k) - 1;
 }
-  if(k == " "){
-    playerY+=2;
+if(k === " " && playerZ <= groundLevel){
+    velZ = jumpPower;
+}
+  //if(k == " "){
+    //playerY+=2;
     
-  }
+ // }
   if(k == "shift"){
     playerY-=2;
   }
@@ -802,25 +933,221 @@ if (k >= "1" && k <= "9") {
 
 
     function render() {
-      
+      const now = performance.now();
+const delta = now - lastTime;
+lastTime = now;
+
+FPS = Math.round(1000 / delta);
       //handBob += 0.08;
       //handSwing *= 0.85;
-      document.getElementById("stats").textContent=` player:[x:${x} y:${playerY} z:${y} dir:${dir[0]}] cam:[x:${cam.x} y:${cam.y} z:${cam.z} cam:${cam}]`;
+      document.getElementById("stats").textContent=` player:[x:${x} y:${playerY} z:${y} dir:${dir[0]}] cam:[x:${cam.x} y:${cam.y} z:${cam.z} cam:${cam}] fps:${FPS}`;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+  renderQueue.sort((a,b)=>b.dist-a.dist);
+
+for(let obj of renderQueue){
+    obj.draw();
+}
   cam.skyX=dir[0]*5.5
   sx=(x-(cam.skyX*scrollspeed));
+  //ctx.fillStyle = applyLighting("#8B5A2B",dist);
   drawSky(0);
   drawSky(mod(sx,(480*2))-480);
   drawTriangle(true);
-  drawFloor();
+  //drawWalls();
+  drawBlocks();
+  renderQueue = [];
+
+for(let m of mobs){
+    m.update();
+
+    renderQueue.push({
+        dist: m.dist,
+        draw: () => m.draw()
+    });
+}
   ne.update();
   ne.draw();
+  df.update();
+  df.draw();
+  drawFloor();
   drawHotbar();
   drawCrossHair(0,0,0);
+  highlightBlock();
+  FPS=(Math.floor(1/timer*10)/10);
   //drawHand();
-  drawHeldItem();
+  //drawHeldItem();
+  velZ += gravity;
+playerZ += velZ;
+
+if(playerZ <= groundLevel){
+    playerZ = groundLevel;
+    velZ = 0;
+}
+  sun = 0.6 + Math.sin(Date.now()*0.0002)*0.4;
   requestAnimationFrame(render);
+}
+function drawBlocks(){
+
+    for(let i=0;i<blockMap.length;i++){
+
+        if(blockMap[i]===BLOCK.AIR) continue;
+
+        const bx=(i%grdw)*34;
+        const by=Math.floor(i/grdw)*34;
+
+        drawRealCube(bx,0,by,34);
+    }
+
+}
+function drawRealCube(cx, cy, cz, size, tex){
+    const hs = size/2;
+
+    const verts = [
+        {x:cx-hs,y:cy-hs,z:cz-hs},
+        {x:cx+hs,y:cy-hs,z:cz-hs},
+        {x:cx+hs,y:cy+hs,z:cz-hs},
+        {x:cx-hs,y:cy+hs,z:cz-hs},
+
+        {x:cx-hs,y:cy-hs,z:cz+hs},
+        {x:cx+hs,y:cy-hs,z:cz+hs},
+        {x:cx+hs,y:cy+hs,z:cz+hs},
+        {x:cx-hs,y:cy+hs,z:cz+hs},
+    ];
+
+    const proj=[];
+
+    const sin=Math.sin(dir[0]);
+    const cos=Math.cos(dir[0]);
+
+    for(let v of verts){
+
+        const dx=v.x-x;
+        const dy=v.y-(playerY+playerZ);
+        const dz=v.z-y;
+
+        const rx=dx*cos-dz*sin;
+        var rz=dx*sin+dz*cos;
+
+        if(rz <= 1) rz = 1;
+
+        const scale=500/rz;
+
+        proj.push({
+            x:canvas.width/2+rx*scale,
+            y:canvas.height/2-dy*scale+horizon,
+            z:rz
+        });
+    }
+
+    const faces=[
+        [0,1,2,3], // back
+        [4,5,6,7], // front
+        [0,4,7,3], // left
+        [1,5,6,2], // right
+        [3,2,6,7], // top
+        [0,1,5,4]  // bottom
+    ];
+
+    const shade=[0.6,1,0.75,0.5,1.2,0.4];
+
+    for(let f=0;f<6;f++){
+
+        const face=faces[f];
+        const a = proj[face[0]];
+const b = proj[face[1]];
+const c = proj[face[2]];
+
+const cross =
+  (b.x - a.x) * (c.y - a.y) -
+  (b.y - a.y) * (c.x - a.x);
+
+if(cross < 0) continue;
+        ctx.beginPath();
+        ctx.moveTo(proj[face[0]].x,proj[face[0]].y);
+
+        for(let i=1;i<4;i++)
+            ctx.lineTo(proj[face[i]].x,proj[face[i]].y);
+
+        ctx.closePath();
+
+        const s=shade[f]*255;
+
+        ctx.fillStyle=`rgb(${s},${s},${s})`;
+        ctx.fill();
+    }
+}
+//drawRealCube(10,20,10,50,1);
+function applyLighting(baseColor, dist){
+
+  let light = sun - dist*0.001;
+
+  light = Math.max(0.2,light);
+
+  const num=parseInt(baseColor.replace("#",""),16);
+
+  let r=((num>>16)&255)*light;
+  let g=((num>>8)&255)*light;
+  let b=(num&255)*light;
+
+  return `rgb(${r|0},${g|0},${b|0})`;
+
+}
+function drawCube(cx, cy, size, height, color){
+
+  const dx = cx - x;
+  const dy = cy - y;
+
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if(dist > 600) return;
+
+  const angle = Math.atan2(dx,dy) - dir[0];
+
+  const screenX =
+    canvas.width/2 +
+    (angle/(Math.PI/3))*canvas.width;
+
+  const scale = 500/dist;
+
+  const w = size*scale;
+  const h = height*scale;
+
+  const topY = canvas.height/2 + z - h + horizon;
+
+  // TOP
+  ctx.fillStyle = color;
+  ctx.fillRect(screenX-w/2, topY, w, w/2);
+
+  // LEFT SIDE
+  ctx.fillStyle = shadeColor(color,-20);
+  ctx.fillRect(screenX-w/2, topY+w/2, w/2, h);
+
+  // RIGHT SIDE
+  ctx.fillStyle = shadeColor(color,-40);
+  ctx.fillRect(screenX, topY+w/2, w/2, h);
+
+}
+function shadeColor(color,percent){
+  const num = parseInt(color.replace("#",""),16);
+  let r=(num>>16)+percent;
+  let g=((num>>8)&0x00FF)+percent;
+  let b=(num&0x0000FF)+percent;
+
+  r=Math.max(0,Math.min(255,r));
+  g=Math.max(0,Math.min(255,g));
+  b=Math.max(0,Math.min(255,b));
+
+  return `rgb(${r},${g},${b})`;
+}
+function highlightBlock(){
+  const hit = raycastBlock();
+  if(!hit) return;
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.rect(canvas.width/2-12,canvas.height/2-12,24,24);
+  ctx.stroke();
 }
 function drawTriangle(cut){
   if(!cut){
@@ -1124,8 +1451,64 @@ function drawHotbar() {
     }
   }
 }
+function drawWalls(){
+
+  const FOV = Math.PI / 3;
+  const rays = canvas.width;
+
+  for(let i=0;i<rays;i+=6){
+
+    const rayAngle = dir[0] - FOV/2 + (i/rays)*FOV;
+
+    const sin = Math.sin(rayAngle);
+    const cos = Math.cos(rayAngle);
+
+    let dist = 0;
+    let hit = false;
+
+    while(!hit && dist < 400){
+
+      dist += 2;
+
+      const rx = x + sin * dist;
+      const ry = y + cos * dist;
+
+      const tileX = Math.floor(rx/34);
+      const tileY = Math.floor(ry/34);
+
+      const idx = tileX + tileY*grdw;
+
+      if(idx>=0 && idx<blockMap.length){
+
+        if(blockMap[idx] !== BLOCK.AIR){
+
+          hit = true;
+
+          const wallHeight = 800/dist;
+
+          let shade = 255 - dist*0.8;
+          shade = Math.max(60,shade);
+
+          ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+
+          ctx.fillRect(
+            i,
+            canvas.height/2 + playerZ  - wallHeight/2 + horizon,
+            2,
+            wallHeight
+          );
+
+        }
+
+      }
+
+    }
+
+  }
+
+}
 function drawCrossHair(r,g,b){
-  ctx.fillStyle=`rgb(${r},${g},${b})`;
+  ctx.strokeStyle=`rgb(${r},${g},${b})`;
   ctx.moveTo(300,200);
   ctx.beginPath();
   ctx.lineTo(300,195);
@@ -1133,6 +1516,7 @@ function drawCrossHair(r,g,b){
   ctx.moveTo(300,200);
   ctx.lineTo(295,200);
   ctx.lineTo(305,200);
+  ctx.stroke();
   ctx.closePath();
 }
 //255
@@ -1162,6 +1546,21 @@ canvas.addEventListener("mousedown", (e) => {
 canvas.addEventListener("contextmenu", (e) => {
   e.preventDefault();
 });
-
+canvas.addEventListener("click", () => {
+  canvas.requestPointerLock();
+});
     document.addEventListener('keydown',(e)=>{handleKeys(e)})
+    document.addEventListener("mousemove", (e) => {
+  if (document.pointerLockElement === canvas) {
+
+    const sensitivity = 0.001;
+
+    dir[0] += e.movementX * sensitivity; // left/right
+
+    horizon += e.movementY * 0.2; // look up/down
+    horizon = Math.max(-80, Math.min(80, horizon));
+
+  }
+});
+
 </script></body></html>
