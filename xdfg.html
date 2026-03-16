@@ -1,5 +1,6 @@
 <!DOCTYPE html><html><head><title>noName</title></head><body>
-  <canvas id="game" height="400" width="600" style="margin:center;"></canvas><br><p id="stats"></p>
+  
+<canvas id="game" height="400" width="600" style="margin:center;"></canvas><br><p id="stats"></p>
 <script type="module">
     
     const canvas=document.getElementById("game");
@@ -24,8 +25,8 @@
 
     const gravity = -0.45;
     const jumpPower = 9;
-
-    const groundLevel = 15;
+    const RENDER_DISTANCE = 10; // blocks
+    const groundLevel = 34;
     let sun = 1;
     let blockMap = [];
     var inventoryItemsX=[150]
@@ -314,13 +315,13 @@ this.y -= (this.y-y)*0.002;
   const height = this.size * scale;
 
   ctx.fillStyle="green";
-
-  ctx.fillRect(
+  drawRealCube(this.x,57,this.y,height,4);
+  /*ctx.fillRect(
     screenX-height/2,
     canvas.height/2+ playerZ -height+horizon,
     height,
     height
-  );
+  );*/
 
 }
 
@@ -942,11 +943,10 @@ FPS = Math.round(1000 / delta);
       //handSwing *= 0.85;
       document.getElementById("stats").textContent=` player:[x:${x} y:${playerY} z:${y} dir:${dir[0]}] cam:[x:${cam.x} y:${cam.y} z:${cam.z} cam:${cam}] fps:${FPS}`;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  renderQueue.sort((a,b)=>b.dist-a.dist);
+ 
 
-for(let obj of renderQueue){
-    obj.draw();
-}
+
+
   cam.skyX=dir[0]*5.5
   sx=(x-(cam.skyX*scrollspeed));
   //ctx.fillStyle = applyLighting("#8B5A2B",dist);
@@ -954,22 +954,29 @@ for(let obj of renderQueue){
   drawSky(mod(sx,(480*2))-480);
   drawTriangle(true);
   //drawWalls();
-  drawBlocks();
-  renderQueue = [];
+  
+  
 
-for(let m of mobs){
-    m.update();
-
-    renderQueue.push({
-        dist: m.dist,
-        draw: () => m.draw()
-    });
-}
+drawBlocks();
   ne.update();
   ne.draw();
   df.update();
   df.draw();
   drawFloor();
+  for(let obj of renderQueue){
+    obj.draw();
+}renderQueue = [];
+
+   renderQueue = [];
+
+for (let m of mobs) {
+  m.update();
+
+  renderQueue.push({
+    dist: m.dist,
+    draw: () => m.draw()
+  });
+}
   drawHotbar();
   drawCrossHair(0,0,0);
   highlightBlock();
@@ -988,14 +995,26 @@ if(playerZ <= groundLevel){
 }
 function drawBlocks(){
 
-    for(let i=0;i<blockMap.length;i++){
+    const px = Math.floor(x / BLOCK_SIZE);
+    const pz = Math.floor(y / BLOCK_SIZE);
 
-        if(blockMap[i]===BLOCK.AIR) continue;
+    for(let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++){
+        for(let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++){
 
-        const bx=(i%grdw)*34;
-        const by=Math.floor(i/grdw)*34;
+            const gx = px + dx;
+            const gz = pz + dz;
 
-        drawRealCube(bx,0,by,34);
+            if(gx < 0 || gz < 0 || gx >= grdw || gz >= grdw) continue;
+
+            const index = gx + gz * grdw;
+
+            if(blockMap[index] === BLOCK.AIR) continue;
+
+            const bx = gx * BLOCK_SIZE;
+            const bz = gz * BLOCK_SIZE;
+
+            drawRealCube(bx, BLOCK_SIZE/2, bz, BLOCK_SIZE);
+        }
     }
 
 }
@@ -1142,12 +1161,13 @@ function highlightBlock(){
   const hit = raycastBlock();
   if(!hit) return;
 
+  const bx = hit.hitX * BLOCK_SIZE;
+  const bz = hit.hitY * BLOCK_SIZE;
+
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
 
-  ctx.beginPath();
-  ctx.rect(canvas.width/2-12,canvas.height/2-12,24,24);
-  ctx.stroke();
+  drawRealCube(bx, BLOCK_SIZE/2, bz, BLOCK_SIZE+2);
 }
 function drawTriangle(cut){
   if(!cut){
