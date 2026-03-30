@@ -14,6 +14,7 @@
             this.load.setBaseURL('https://labs.phaser.io');
 
             this.load.image('sky', 'assets/skies/space3.png');
+            
             //this.load.image('logo', 'assets/sprites/phaser3-logo.png');
             this.load.image('green', 'assets/particles/green.png');
             //this.load.setBaseURL();
@@ -77,6 +78,62 @@
         if(e.code === 'KeyB'){
             console.log('bounce');
             logo.setBounce(1, 0.5);
+        }
+        if(e.code === 'KeyN'){
+            console.log('no bounce');
+            logo.setBounce(0, 0);
+        }
+        if(e.code === 'KeyG'){
+            console.log('gravity');
+            logo.setGravityY(20000);
+        }
+        if(e.code === 'KeyH'){
+            console.log('no gravity');
+            logo.setGravityY(0);
+        }
+        if(e.code === 'KeyC'){
+            console.log('collide world bounds');
+            logo.setCollideWorldBounds(true);
+        }
+        if(e.code === 'KeyV'){
+            console.log('no collide world bounds');
+            logo.setCollideWorldBounds(false);
+        }
+        if(e.code === 'KeyP'){
+            console.log('pause');
+            logo.body.enable = false;
+        }
+        if(e.code === 'KeyO'){
+            console.log('resume');
+            logo.body.enable = true;
+        }
+        if(e.code === 'KeyL'){
+            console.log('log velocity');
+            console.log(logo.body.velocity);
+        }
+        if(e.code === 'KeyK'){
+            console.log('log position');
+            console.log(logo.body.position);
+        }
+        if(e.code === 'KeyM'){
+            console.log('log bounce');
+            console.log(logo.body.bounce);
+        }
+        if(e.code === 'KeyQ'){
+            console.log('log gravity');
+            console.log(logo.body.gravity);
+        }
+        if(e.code === 'KeyW'){
+            console.log('log collide world bounds');
+            console.log(logo.body.collideWorldBounds);
+        }
+        if(e.code === 'KeyE'){
+            console.log('log enable');
+            console.log(logo.body.enable);
+        }
+        if(e.code === 'KeyT'){
+            console.log('log all');
+            console.log(logo.body);
         }
     })
     const game = new Phaser.Game(config);
