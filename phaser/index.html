@@ -6,23 +6,27 @@
 <body>
 
     <script>
+        var audio=new Audio('assets/assets/Record(online-voice-recorder.mp3)')
     var logo;
     class Example extends Phaser.Scene
     {
         preload ()
         {
+            audio.play();
             this.load.setBaseURL('https://labs.phaser.io');
 
             this.load.image('sky', 'assets/skies/space3.png');
-            
+            //this.load.image('sky', 'assets/assets/bomb.png');
             //this.load.image('logo', 'assets/sprites/phaser3-logo.png');
             this.load.image('green', 'assets/particles/green.png');
             //this.load.setBaseURL();
             this.load.image('logo', 'https://axlvan8.github.io/code/phaser/assets/Drawing.png');
+            //this.load.image('logo', '');
         }
 
         create ()
-        {
+        {   
+            audio.play();
             this.add.image(400, 300, 'sky');
 
             const particles = this.add.particles(0, 0, 'green', {
@@ -53,6 +57,128 @@
             }
         }
     };
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    function upd(){
+          const gamepads = navigator.getGamepads();
+
+  for (const gp of gamepads) {
+    if (!gp) continue;
+
+    // Buttons
+    gp.buttons.forEach((button, index) => {
+      if (button.pressed) {
+        console.log(`Button ${index} pressed`);
+        if(index === 0){
+            console.log('jump');
+            logo.setVelocity(0, 3356);
+        }
+        if(index === 1){
+            console.log('right');
+            logo.setVelocity(3000, 0);
+        }
+        if(index === 2){
+            console.log('left');
+            logo.setVelocity(-3000, 0);
+        }
+        if(index === 3){
+            console.log('down');
+            logo.setVelocity(0, -3000);
+        }
+        
+        if(index === 4){
+            console.log('bounce');
+            logo.setBounce(1, 0.5);
+        }
+        if(index === 5){
+            console.log('no bounce');
+            logo.setBounce(0, 0);
+        }
+        if(index === 6){
+            console.log('gravity');
+            logo.setGravityY(20000);
+        }
+        if(index === 7){
+            console.log('no gravity');
+            logo.setGravityY(0);
+        }
+        if(index === 8){
+            console.log('collide world bounds');
+            logo.setCollideWorldBounds(true);
+        }
+        if(index === 9){
+            console.log('no collide world bounds');
+            logo.setCollideWorldBounds(false);
+        }
+        if(index === 11){
+            console.log('pause');
+            logo.body.enable = false;
+        }
+        if(index === 10){
+            console.log('resume');
+            logo.body.enable = true;
+        }
+        /*if(index === 12){
+            console.log('log velocity');
+            console.log(logo.body.velocity);
+        }
+        if(index === 13){
+            console.log('log position');
+            console.log(logo.body.position);*/
+      }
+    });
+
+    // Axes (joysticks)
+    gp.axes.forEach((axis, index) => {
+      if (Math.abs(axis)) {
+        console.log(`Axis ${index}: ${axis}`);
+        if(index === 0){
+            if(axis > 0.5){
+                console.log('right');
+                logo.setVelocity(3000, 0);
+            } else if(axis < -0.5){
+                console.log('left');
+                logo.setVelocity(-3000, 0);
+            }
+        }
+        if(index === 1){
+            if(axis > 0.5){
+                console.log('down');
+                logo.setVelocity(0, -10);
+            } else if(axis < -0.5){
+                console.log('up');
+                logo.setVelocity(0, 10);
+            }
+        }
+        if(index === 2){
+            if(axis > 0.5){
+                console.log('reset');
+                logo.setPosition(400, 100);
+            } else if(axis < -0.5){
+                console.log('log all');
+                console.log(logo.body);
+            }
+        }
+        if(index === 3){
+            if(axis > 0.5){
+                console.log('down');
+                logo.setVelocity(0, -10);
+            } else if(axis < -0.5){
+                console.log('up');
+                logo.setVelocity(0, 10);
+            }
+        }
+      }
+      if(index === 4){
+        if(axis > 0.5){
+            console.log('jump');
+            logo.setVelocity(0, 3356);
+        }
+      }
+    });
+  }
+    }
     document.addEventListener('keydown', (e)=>{
         if(e.code === 'Space'){
             console.log('jump');
@@ -136,6 +262,13 @@
             console.log(logo.body);
         }
     })
+    window.addEventListener("gamepadconnected", (e)=>{
+  console.log("Gamepad connected:", e.gamepad);
+});
+window.addEventListener("gamepaddisconnected", (e)=>{
+  console.log("Gamepad disconnected:", e.gamepad);
+});
+setInterval(upd, 100);
     const game = new Phaser.Game(config);
     logo.setBounce(1, 0.5);
     </script>
