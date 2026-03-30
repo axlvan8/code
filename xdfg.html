@@ -941,6 +941,29 @@ lastTime = now;
 FPS = Math.round(1000 / delta);
       //handBob += 0.08;
       //handSwing *= 0.85;
+       const gamepads = navigator.getGamepads();
+
+  for (const gp of gamepads) {
+    if (!gp) continue;
+
+    // Buttons
+    gp.buttons.forEach((button, index) => {
+      if (button.pressed) {
+        console.log(`Button ${index} pressed`);
+      }
+    });
+
+    // Axes (joysticks)
+    gp.axes.forEach((axis, index) => {
+      if (Math.abs(axis)) {
+        console.log(`Axis ${index}: ${axis}`);
+        if(axis==2){
+          dir[0] += axis*10; // Rotate player based on right stick horizontal movement
+        }
+      }
+    });
+  }
+
       document.getElementById("stats").textContent=` player:[x:${x} y:${playerY} z:${y} dir:${dir[0]}] cam:[x:${cam.x} y:${cam.y} z:${cam.z} cam:${cam}] fps:${FPS}`;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
  
@@ -956,6 +979,9 @@ FPS = Math.round(1000 / delta);
   //drawWalls();
   
   
+
+ 
+ 
 
 drawBlocks();
   ne.update();
@@ -1582,5 +1608,12 @@ canvas.addEventListener("click", () => {
 
   }
 });
+window.addEventListener("gamepadconnected", (e)=>{
+  console.log("Gamepad connected:", e.gamepad);
+});
+window.addEventListener("gamepaddisconnected", (e)=>{
+  console.log("Gamepad disconnected:", e.gamepad);
+});
+//const gamepads=navigator.getGamepads ? navigator.getGamepads() : [];
 
 </script></body></html>
