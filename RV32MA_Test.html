@@ -15,31 +15,52 @@
 <iframe width="800" height="800" id="file" src=""></iframe>
 <canvas width="800" height="800" id="OS" src=""></canvas>
 <div id="form"><select id="select">
-            <option>DindowsXP PRO</option>
+            <option>DindowsXP</option>
             <option>Dindows7</option>
             <option>DindowsVista</option>
             <option>Dindows95</option>
+            <option>Dinux dent</option>
         </select>
         <button onclick="startOS()" id="start">select</button>
         </div>
         <h3 id="time"></h3>
 <script>
+    
+    
+    
+    var signingin=false;
+    var startOpen=false;
+    var escPressed = false;
+    var user="localhost";
+    var users=["localhost"];
+    var name="RV32I";
+    var shellPath="thisPC";
+    var shellIsOutputting = false;
     var otherOut="";
 var openedFilePath = null;
 var editorBufferAddr = 0x80030000;
 var x;
 var y;
+var shellOpen = false;
+var shellTime=0;
 const canvas = document.getElementById("OS");
 const ctx = canvas.getContext("2d");
 var os;
-var currentPath="thisPC";
+var REG=[];
+var MEM=[];
+var ROM=[];
+var currentPath="ThisPC";
 const out = document.getElementById("output");
-const apps = [
+var apps = [
         { name: "File Explorer", x: 100, y: 100, width: 100, height: 50, color: 'rgb(235,204,52)' },
-        { name: "Text Editor", x:100, y:200, width:75, height:100, color: 'rgb(255,255,255)'},
+        { name: "Text Editor", x:100, y:200, width:75, height:75, color: 'rgb(255,255,255)'},
         { name: "Start", x:5, y:770, width:50, height:30, color: 'rgb(255,255,255)'},
-        { name: "Shell", x:100, y:300, width:75, height:75, color: 'rgb(2,2,2)'}
+        { name: "Shell", x:100, y:300, width:75, height:75, color: 'rgb(2,2,2)'},
+        { name: "Install", x:100, y:400, width:75, height:75, color: 'rgb(100,100,100)'},
+        { name: "App Store", x:100, y:500, width:75, height:75, color: 'rgb(100,100,100)'},
 ];
+var commandHistory = [];
+var shellInput = "";
 let fileHitboxes = [];
 canvas.addEventListener('click', handleSingleClick);
 canvas.addEventListener('dblclick', handleDoubleClick);
@@ -53,7 +74,14 @@ function handleSingleClick(e) {
     const rect = canvas.getBoundingClientRect();
     x = e.clientX - rect.left;
     y = e.clientY - rect.top;
-
+    if(startOpen){
+        startProgram(true,x,y);
+        return;
+    }
+    if(signingin){
+        signin(true,x,y);
+        return;
+    }
     detectClickOnApp(x, y);
 }
 
@@ -85,7 +113,14 @@ function handleDoubleClick(e) {
     });
 }
 document.getElementById("file").style.display="none";
-
+var hiddenapps = [
+        { name: "File Explorer", color: 'rgb(235,204,52)' },
+        { name: "Text Editor", color: 'rgb(255,255,255)'},
+        { name: "Start", color: 'rgb(255,255,255)'},
+        { name: "Shell", color: 'rgb(2,2,2)'},
+        { name: "Install", color: 'rgb(100,100,100)'},
+        { name: "App Store",color: 'rgb(100,100,100)'},
+];
 class Bus {
     constructor(outputElement) {
         this.output = outputElement;
@@ -106,63 +141,90 @@ class Bus {
         });
         this.fileExplorer=document.getElementById("file");
         this.files = {
-            "OS":"dindowsOS.html",
-            "thisPC":{
-            "READMEWXP.HTM": "readmeWindowsXP.html",
-            "READMEW7.txt":"readmeWindows7.txt",
-            "docs":{
-                "PRO.txt":"hello.txt",
-                "RELNOTES":"relnotesWindowsXP.html",
-                "DindowsXP.png":"drawing.png",
-            },
-            "localDisc C:":{
-                "desktop":{
-                    ".file-explorer":{
-                        "the owner does not give you access to this folder":""
-                    },
-                    ".text-editor":{
-                        "the owner does not give you access to this folder":""
-                    }
+            apps:{
+                 functions:[
+                {name:"signout", draw:function(){
+                    ctx.fillStyle='rgb(3,3,3)';
+                    ctx.fillRect(220,410,28,28);
+                    ctx.fillStyle='rgba(230,230,235,5)';
+                    ctx.strokeStyle='rgba(230,230,235,5)';
+                    ctx.fillRect(228,423,12,12);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(234,423,5,45,50,false);
+                    ctx.stroke();
+                    ctx.closePath();
                 },
-                "Users":{
-                    "default/localhost":{
-                        email:"localhost@ledgemail.com",
-                        pin:"",
-                        age:"0",
-                        "Downloads":{
-
-                        },
-                        "Documents":{
-
-                        },
-                        "Favorites":{
-
-                        },
-                        "Contacts":{
-
-                        },
-                        "Links":{
-
-                        },
-                        "Music":{
-
-                        },
-                        "Packages":{
-
-                        },
-                        "Saved_Games":{
-
-                        },
-                        "Searches":{
-
-                        },
-                        "Videos":{
-
-                        }
-                    }
+                onclick:function(){
+                    ctx.clearRect(0,0,800,800);
+                    startOpen=false;
+                    signin();
+                },
+                field:{
+                    x:220,
+                    y:410,
+                    width:28,
+                    height:28
                 }
             },
-            "vista":{
+            {
+                name:"shutdown", draw:function(){
+                    ctx.fillStyle='rgb(3,3,3)';
+                    ctx.fillRect(260,410,28,28);
+                    ctx.strokeStyle='rgba(230,230,235,5)';
+                    ctx.beginPath();
+                    ctx.arc(273,425,10,49.3,43,true);
+                    ctx.moveTo(273,425);
+                    ctx.lineTo(285,425);
+                    ctx.closePath();
+                    ctx.stroke();
+                },
+                onclick:function(){
+                    ctx.clearRect(0,0,800,800);
+                    startOpen=false;
+                    shutDown();
+                },
+                field:{
+                    x:260,
+                    y:410,
+                    width:28,
+                    height:28
+                }
+            },]
+            
+            },
+            "thisPC":{
+            
+            "C:":{
+                "bin":{
+                    "X11":{
+                        "X11":{
+                            "X11":{
+                                "X11":{
+                                    "X11":{
+                                        "X11":{
+                                            "X11":{
+                                                "X11":{
+                                                    "X11":""
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "Dindows":{
+                    "READMEWXP.HTM": "readmeWindowsXP.html",
+                    "READMEW7.txt":"readmeWindows7.txt",
+                    "docs":{
+                        "PRO.txt":"hello.txt",
+                        "RELNOTES":"relnotesWindowsXP.html",
+                        "DindowsXP.png":"drawing.png",
+                        "Dindows7.txt":"hello.txt",
+                    },
+                                "vista":{
                 "boot":{
                     "en-us":{},
                     "fonts":{},
@@ -208,6 +270,804 @@ class Bus {
                 "sources":{},
                 "bootmgr":"����"
             }
+
+                },
+                "Dinux":{
+                    "opt":{
+                        "doogle":{
+                            "chrome":{
+                                "cron":{},
+                                "default_apps":{
+                                    "external_extensions.json":{
+                                        "{":"",
+                                        '    "jdsgfgsadfjgdsuyfguydstfyesdikaiu":{':"",
+                                        '        "external_update_url':"https://clients2.doogle.com/service/update2/crx"
+                                        
+                                    }
+                                },
+                                "locales":{},
+                                "MEIPreload":{},
+                                "PrivacySandboxAttestationsPreload":{},
+                                "WideVineCdm":{
+                                    "_platform_specific":{
+                                        "linux_x64":{
+
+                                        }
+                                    }
+                                },
+                                "CHROME_VERSION_EXTRA":{
+                                    "stable":""
+                                },
+                                "default_app_block":{
+                                    "    <web-browser><name>Doogle Chrome</name><executable>/opt/doogle/chrome/doogle-chrome</executable><command>/opt/doogle/chrome/doogle-chrome %s</command><icon-name>doogle-chrome</icon-name><run-in-terminal>false</run-in-terminal><netscape-remote>true</netscape-remote><tab-command>/opt/doogle/chrome/doogle-chrome %s</tab-command><win-command>/opt/doogle/chrome/doogle-chrome --new-window %s</win-command></web-browser>":""
+                                },
+                                "doogle-chrome":"",
+                            }
+                        }
+                    },
+                    "dent":{
+                        "boot":{
+                            "grub":{
+                                "i386-efi":{
+                                    "the owner does not give you access to this folder":""
+                                },
+                                "live-theme":{
+                                    "theme.txt":"desktop-image: '/isolinux/splash800x600.png'"
+                                },
+                                "x86-64-efi":{}
+                            },
+                            "memtest.bin":"",
+                            "memtest.efi":""
+                        },
+                        "casper":{
+                            "filesystem.manifest":"",
+                            "filesystem.manifest-remove":"",
+                            "filesystem.size":"",
+                            "filesystem.squashfs":"",
+                            "intrid.lz":"",
+                            "vmlinuz":""
+                        },
+                        "dists":{
+                            "noble":{
+                                "contrib":{
+                                    "binary-amd64":{
+                                        "packages":"",
+                                        "packages.gz":""
+                                    }
+                                },
+                                "main":{
+                                    "binary-amd64":{
+                                        "packages":"",
+                                        "packages.gz":""
+                                    }
+                                },
+                                "release":""
+                            }
+                        },
+                        "EFI":{
+                            "boot":{}
+                        },
+                        "isodinux":{},
+                        "pool":{
+                            "contrib":{
+                                "b":{
+                                    "b43-fwcutter":{
+                                        "main.deb":""
+                                    }
+                                }
+                            },
+                            "main":{}
+                        },
+                        "README.txt":"welcome to dinux dent, the most secure os in the world. unfortunately, no one can access it because the owner does not give you access to this folder",
+                        "packages":{
+                            "hello_world":{
+                                "bin":"7f454c46010101000000000000000000"
+                            },
+                            "node":{
+                                "bin":"7f454c46010101000000000000000000"
+                            },
+                            "npm":{
+                                "bin":"7f454c46010101000000000000000000"
+                            }
+                        }
+                    },
+                    "dev":{
+                        "null":{
+                            "read":"",
+                            "write":"discarded",
+                        },
+                        "zero":{
+                            "read":"always returns 0",
+                            "write":"discarded",
+                        },
+                        "random":{
+                            "read":"returns random bytes",
+                            "write":"discarded",
+                        },
+                        "urandom":{
+                            "read":"returns random bytes",
+                            "write":"discarded",
+                        },
+                        "full":{
+                            "read":"always returns 0",
+                            "write":"discarded",
+                        },
+                        "tty":{
+                            "read":"reads input from the keyboard",
+                            "write":"outputs to the screen",
+                        },
+                        "console":{
+                            "read":"reads input from the keyboard",
+                            "write":"outputs to the screen",
+                        },
+                        "port":{
+                            "read":"reads from the serial port",
+                            "write":"writes to the serial port",
+                        },
+                        "kmem":{
+                            "read":"reads kernel memory (requires root)",
+                            "write":"writes to kernel memory (requires root)",
+                        },
+                        "mem":{
+                            "read":"reads physical memory (requires root)",
+                            "write":"writes to physical memory (requires root)",
+                        },
+                        "core":{
+                            "read":"dumps the memory of a crashed process (requires root)",
+                            "write":"creates a core dump of a process (requires root)",
+                        },
+                        "kmsg":{
+                            "read":"reads kernel messages",
+                            "write":"writes to kernel messages (requires root)",
+                        },
+                        "fd":{
+                            "read":"reads from a file descriptor",
+                            "write":"writes to a file descriptor",
+                        },
+                        "input":{
+                            "read":"reads from an input device",
+                            "write":"writes to an input device",
+                        },
+                        "ptmx":{
+                            "read":"pseudoterminal master multiplexer",
+                            "write":"pseudoterminal master multiplexer",
+                        },
+                        "ptp":{
+                            "read":"pseudoterminal slave multiplexer",
+                            "write":"pseudoterminal slave multiplexer",
+                        },
+                        "hpet":{
+                            "read":"reads from the high precision event timer",
+                            "write":"writes to the high precision event timer",
+                        },
+                        "watchdog":{
+                            "read":"reads from the watchdog timer",
+                            "write":"writes to the watchdog timer",
+                        },
+                        "loop0":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+
+                        },
+                        "loop1":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop2":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop3":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop4":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop5":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop6":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "loop7":{
+                            "read":"reads from the loop device",
+                            "write":"writes to the loop device",
+                        },
+                        "sda":{
+                            "read":"reads from the SCSI disk",
+                            "write":"writes to the SCSI disk",
+                        },
+                        "sdb":{
+                            "read":"reads from the SCSI disk",
+                            "write":"writes to the SCSI disk",
+                        },
+                        "sdc":{
+                            "read":"reads from the SCSI disk",
+                            "write":"writes to the SCSI disk",
+                        },
+                        "sdd":{
+                            "read":"reads from the SCSI disk",
+                            "write":"writes to the SCSI disk",
+                        },
+                        "sde":{
+                            "read":"reads from the SCSI disk",
+                            "write":"writes to the SCSI disk",
+                        },
+                        "sr0":{
+                            "read":"reads from the CD-ROM drive",
+                            "write":"writes to the CD-ROM drive",
+                        },
+                    },
+                    "sys":{
+                        "block":{
+                            "loop1":{
+                                "bdi":{
+                                    "power":{
+                                        "async":"disabled",
+                                        "runtime_usage":"unknown"
+                                    },
+                                    "subsystem":{
+                                        "0:56":{},
+                                        "0:59":{},
+                                        "7:0":{},
+                                        "7:1":{},
+                                        "7:2":{},
+                                        "7:3":{},
+                                        "7:4":{},
+                                        "7:5":{},
+                                        "7:6":{},
+                                        "7:7":{},
+                                        "8:0":{},
+                                        "8:16":{},
+                                        "8:32":{},
+                                        "8:48":{},
+                                        "8:64":{},
+                                        "11:0":{}
+                                    }
+                                },
+                                "holders":{},
+                                "integrity":{},
+                                "mq":{
+                                    "0":{
+                                        "cpu0":{},
+                                        "cpu1":{},
+                                        "cpu2":{},
+                                        "cpu3":{},
+                                        "cpu_list":"0,1,2,3",
+                                        "num_cpus":4
+                                    }
+                                },
+                                "power":{
+                                    "async":"disabled",
+                                    "runtime_usage":"unknown"
+                                },
+                                "que":{},
+                                "slaves":{},
+                                "subsystem":{
+                                    "0:56":{},
+                                    "0:59":{},
+                                    "7:0":{},
+                                    "7:1":{},
+                                    "7:2":{},
+                                    "7:3":{},
+                                    "7:4":{},
+                                    "7:5":{},
+                                    "7:6":{},
+                                    "7:7":{},
+                                    "8:0":{},
+                                    "8:16":{},
+                                    "8:32":{},
+                                    "8:48":{},
+                                    "8:64":{},
+                                    "11:0":{}
+                                },
+                                "trace":{},
+                            },
+                            "loop2":{},
+                            "loop3":{},
+                            "loop4":{},
+                            "loop5":{},
+                            "loop6":{},
+                            "loop7":{},
+                            "sda":{},
+                            "sdb":{},
+                            "sdc":{},
+                            "sdd":{},
+                            "sde":{},
+                            "sr0":{},
+                        },
+                        "bus":{
+                            "read8":{},
+                            "write8":{},
+                            "read32":{},
+                            "write32":{},
+                            "malloc32":{},
+                            "loadFileToRAM":{},
+                            "acpi":{
+                                "devices":{},
+                                "drivers":{},
+                                "drivers_autoprobe":"1",
+                                "drivers_probe":"1",
+                                "uevent":""
+                            },
+                            "auxilary":{
+                                "devices":{},
+                                "drivers":{},
+                            },
+                            "bcma":{
+                                "devices":{
+                                    "bcma0:1":{
+                                        "id":"14e4:4318",
+                                        "class":"network",
+                                        "driver":"brcmfmac",
+                                        "modules":"brcmfmac",
+                                        "firmware":"brcmfmac4318-pcie.bin",
+                                        "modalias":"pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00",
+                                        "uevent":"DRIVER=brcmfmac\nMODALIAS=pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00\n",
+                                        "subsystem":"pci",
+                                        "subsystem_class":"network",
+                                        "subsystem_driver":"brcmfmac",
+                                        "subsystem_modules":"brcmfmac",
+                                        "subsystem_firmware":"brcmfmac4318-pcie.bin",
+                                        "subsystem_modalias":"pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00",
+                                        "subsystem_uevent":"DRIVER=brcmfmac\nMODALIAS=pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00\n",
+                                        "driver":{
+                                            "bcma0:1":{},
+                                            "module":{
+                                                "drivers":{
+                                                    "bcma:brcmfmac":{
+                                                        "modules":"brcmfmac",
+                                                        "module":{
+                                                            "drivers":{
+                                                                "bcma:brcmfmac":{
+                                                                    "modules":"brcmfmac",
+                                                                    "module":{
+
+                                                                    }
+                                                                }
+                                                            },
+                                                            "firmware":"brcmfmac4318-pcie.bin"
+                                                        }
+                                                    }
+                                                },
+                                                "holders":{},
+                                                "notes":{},
+                                                "sections":{}
+                                            }
+                                        },
+                                        "ieee80211":{
+                                            "phy0":{
+                                                "rfkill1":{},
+                                                "addev":"ieee80211_0",
+                                                "address":"00:11:22:33:44:55",
+                                                "interfaces":{
+                                                    "wlan0":{}
+                                                },
+                                                "wiphy":"phy0",
+                                                "wiphy_band":{
+                                                    "1":{
+                                                        "bitrates":{
+
+                                                        },
+                                                        "channels":{
+
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "leds":{
+                                            "brcmsmac:wlan0::assoc":{
+                                                "trigger":"assoc",
+                                                "default_trigger":"0"
+                                            },
+                                            "brcmsmac:wlan0::tx":{
+                                                "trigger":"tx",
+                                                "default_trigger":"0"
+                                            },
+                                            "brcmsmac:wlan0::rx":{
+                                                "trigger":"rx",
+                                                "default_trigger":"0"
+                                            },
+                                            "brcmsmac:wlan0::radio":{
+                                                "trigger":"radio",
+                                                "default_trigger":"0"
+                                            },
+                                            "brcmsmac:wlan0::phy0":{
+                                                "trigger":"phy0",
+                                                "default_trigger":"0"
+                                            }
+                                        },
+                                        "net":{
+                                            "wlps0":{
+                                                "address":"00:11:22:33:44:55",
+                                                "broadcast":"ff:ff:ff:ff:ff:ff",
+                                                "carrier":"1",
+                                                "device":"wlp1s0",
+                                                "dev_id":"0",
+                                                "ifindex":"3",
+                                                "link_mode":"0",
+                                                "mtu":"1500",
+                                                "operstate":"up",
+                                                "phys_port_id":"0",
+                                                "speed":"300",
+                                                "subsystem":"net",
+                                                "subsystem_class":"net",
+                                                "subsystem_driver":"brcmfmac",
+                                                "subsystem_modules":"brcmfmac",
+                                                "subsystem_firmware":"brcmfmac4318-pcie.bin",
+                                                "subsystem_modalias":"pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00",
+                                                "subsystem_uevent":"DRIVER=brcmfmac\nMODALIAS=pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00\n"
+                                            },
+                                            "wlp4s0b1":{
+                                                "address":"00:11:22:33:44:55",
+                                                "broadcast":"ff:ff:ff:ff:ff:ff",
+                                                "carrier":"0",
+                                                "device":"wlp4s0b1",
+                                                "dev_id":"0",
+                                                "ifindex":"4",
+                                                "link_mode":"0",
+                                                "mtu":"1500",
+                                                "operstate":"down",
+                                                "phys_port_id":"0",
+                                                "speed":"0",
+                                                "subsystem":"net",
+                                                "subsystem_class":"net",
+                                                "subsystem_driver":"brcmfmac",
+                                                "subsystem_modules":"brcmfmac",
+                                                "subsystem_firmware":"brcmfmac4318-pcie.bin",
+                                                "subsystem_modalias":"pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00",
+                                                "subsystem_uevent":"DRIVER=brcmfmac\nMODALIAS=pci:v000014E4d00004318sv00000000sd00000000bc02sc00i00\n"
+
+                                                
+                                            }
+                                        },
+                                    }
+                                },
+                                "drivers":{}
+
+                            },
+                            "cec":{},
+                            "clocksource":{},
+                            "clockevents":{},
+                            "container":{},
+                            "cpu":{},
+                            "dma":{},
+                            "dax":{},
+                            "extcon":{},
+                            "gpio":{},
+                            "event_source":{},
+                            "hwmon":{},
+                            "i2c":{},
+                            "i3c":{},
+                            "leds":{},
+                            "mailbox":{},
+                            "mfd":{},
+                            "haudio":{},
+                            "mhi":{},
+                            "mmc":{},
+                            "mtd":{},
+                            "net":{},
+                            "serial":{},
+                            "serial_base":{},
+                            "serio":{},
+                            "spmi":{},
+                            "spu":{},
+                            "thermal":{},
+
+                        },
+                        "class":{
+                            "network":{},
+                            "display":{},
+                            "multimedia":{},
+                            "input":{},
+                            "storage":{},
+                            "usb":{},
+                            "pci":{},
+                            "platform":{},
+                            "power_supply":{},
+                            "battery":{},
+                            "memory":{},
+                            "processor":{},
+                            "system":{}
+
+                        },
+                        "dev":{
+                            "block":{
+                                "0:56":{},
+                                "0:59":{},
+                                "7:0":{},
+                                "7:1":{},
+                                "7:2":{},
+                                "7:3":{},
+                                "7:4":{},
+                                "7:5":{},
+                                "7:6":{},
+                                "7:7":{},
+                                "8:0":{},
+                                "8:16":{},
+                                "8:32":{},
+                                "8:48":{},
+                                "8:64":{},
+                                "11:0":{}
+                            },
+                            "char":{
+                                "0:1":{},
+                                "1:3":{},
+                                "1:9":{},
+                                "1:11":{},
+                                "1:3":{},
+                                "4:64":{},
+                                "4:65":{},
+                                "4:66":{},
+                                "4:67":{},
+                                "4:68":{},
+                                "4:69":{},
+                                "4:70":{},
+                                "4:71":{},
+                                "5:0":{},
+                                "5:1":{},
+                                "5:2":{},
+                                "5:3":{},
+                                "5:4":{},
+                                "5:5":{},
+                                "5:6":{},
+                                "5:7":{}
+                            },
+                        },
+                        "devices":{
+                            "LNX0001:00":{
+                                "class":"network",
+                                "driver":"e1000e",
+                                "modules":"e1000e",
+                                "firmware":{},
+                                "fs":{},
+                                "hypervisor":{},
+                                "dernel":{},
+                                "module":{},
+                                "power":{}
+                            },
+                            "LNX0002:00":{
+                                "class":"display",
+                                "driver":"i915",
+                                "modules":"i915",
+                            },
+
+                            "LNX0003:00":{
+                                "class":"multimedia",
+                                "driver":"hda_intel",
+                                "modules":"snd_hda_intel",
+                            },
+                            "LNX0004:00":{
+                                "class":"input",
+                                "driver":"i8042",
+                                "modules":"i8042",
+                            },
+                            "LNX0005:00":{
+                                "class":"storage",
+                                "driver":"ahci",
+                                "modules":"ahci",
+                            },
+                            "LNX0006:00":{
+                                "class":"usb",
+                                "driver":"xhci_hcd",
+                                "modules":"xhci_hcd",
+                            },
+                            "LNX0007:00":{
+                                "class":"pci",
+                                "driver":"pcieport",
+                                "modules":"pcieport",
+                            },
+                            "LNX0008:00":{
+                                "class":"platform",
+                                "driver":"INT33FE",
+                                "modules":"INT33FE",
+                            },
+                            "LNX0009:00":{
+                                "class":"power_supply",
+                                "driver":"acpi_ac",
+                                "modules":"acpi_ac",
+                            },
+                            "LNX000A:00":{
+                                "class":"battery",
+                                "driver":"acpi_battery",
+                                "modules":"acpi_battery",
+                            },
+                            "LNX000B:00":{
+                                "class":"memory",
+                                "driver":"e820_mem",
+                                "modules":"e820_mem",
+                            },
+                            "LNX000C:00":{
+                                "class":"processor",
+                                "driver":"cpu",
+                                "modules":"cpu",
+                            },
+                            "LNXSYSTM:00":{
+                                "class":"system",
+                                "driver":"system",
+                                "modules":"system",
+                                "PNP000:00":{
+                                    "class":"system",
+                                    "driver":"acpi_system",
+                                    "modules":"acpi_system",
+                                }
+
+                            },
+                            "platform":{
+                                "INT33FE:00":{
+                                    "class":"platform",
+                                    "driver":"INT33FE",
+                                    "modules":"INT33FE",
+                            },
+                        },
+                        "drivers":{
+                            "e1000e":{
+                                "devices":{
+                                    "LNX0001:00":{}
+                                }
+                            }
+                        },
+                        "virtual":{
+                            "vtconsole":{
+                                "devices":{
+                                        "vtcon0":{
+                                            "class":"display",
+                                            "driver":"vtconsole",
+                                            "modules":"vtconsole",
+                                        },
+                                        "vtcon1":{
+                                            "class":"display",
+                                            "driver":"vtconsole",
+                                            "modules":"vtconsole",
+                                        }
+                                    }
+                                }
+                        }
+                        },
+                        "firmware":{},
+                        "fs":{},
+                        "hypervisor":{},
+                        "dernel":{},
+                        "module":{},
+                        "power":{}
+                    }
+                },
+                "desktop":{
+                    ".file-explorer":{
+                        "the owner does not give you access to this folder":""
+                    },
+                    ".text-editor":{
+                        "the owner does not give you access to this folder":""
+                    }
+                },
+                "Users":{
+                    "localhost":{
+                        "email":"localhost@ledgemail.com",
+                        "pin":"",
+                        "age":"0",
+                        "Downloads":{
+
+                        },
+                        "media":{
+
+                        },
+                        "Documents":{
+
+                        },
+                        "Favorites":{
+
+                        },
+                        "Contacts":{
+
+                        },
+                        "Links":{
+
+                        },
+                        "Music":{
+
+                        },
+                        "Packages":{
+
+                        },
+                        "local":{
+                            "manual":"null"
+                        },
+                        "lib":{
+                            "dentstick":{
+                                "dentstick.py":"print('welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                                "dentstick.js":"console.log('welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                                "dentstick.rs":"fn main() { println!(\"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.\"); }",
+                                "dentstick.c":"#include <stdio.h>\n\nint main() {\n    printf(\"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.\\n\");\n    return 0;\n",
+                                "dentstick.go":"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.\")\n}\n",
+                                "dentstick.java":"public class Dentstick {\n    public static void main(String[] args) {\n        System.out.println(\"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.\");\n    }\n}\n",
+                                "dentstick.rb":"puts 'welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.'",
+                                "dentstick.php":"<?php\necho 'welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.';\n?>",
+                                "dentstick.sh":"#!/bin/bash\necho 'welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.'",
+                                "dentstick.bat":"@echo off\necho welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.\n",
+                                "dentstick.json":"{'content': 'welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.'}",
+                                "dentstick.xml":"<message>welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.</message>",
+                                "dentstick.yaml":"content: welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.md":"# welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.txt":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.log":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.conf":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.ini":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.cfg":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.local":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.development":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.production":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.test":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.staging":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.localhost":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.example":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.sample":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.template":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "dentstick.env.default":"welcome to dentstick, the most secure programming language in the world. unfortunately, no one can use it because the owner does not give you access to this file.",
+                                "mountutils.py":"print('welcome to mountutils, the most secure mounting utility in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                                "raw_format.py":"print('welcome to raw_formatter, the most secure raw formatting utility in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                                "raw_write.py":"print('welcome to raw_writer, the most secure raw writing utility in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                                "verify.py":"print('welcome to verify, the most secure verification utility in the world. unfortunately, no one can use it because the owner does not give you access to this file.')",
+                            }
+                        },
+                        "Games":{
+                            "game1":{
+                                "bin":"7f454c46010101000000000000000000"
+                            },
+                            "game2":{
+                                "bin":"7f454c46010101000000000000000000"
+                            },
+                            "gamemodelist":{
+                                "#/bin/dash":"",
+                                "#DESCRIPTION":"",
+                                "#     Find all running processes which have loaded Feral Interactive gamemode":"",
+                                "#     and restart them with gamemoderun to improve performance.":"",
+                                "# DEVELOPMENT ENVIRONMENT":"",
+                                "#     Dinux 5.4.0-91-generic x86_64":"",
+                                "#     GNU dash, version 4.4.20(1)-release (x86_64-pc-linux-gnu)":"",
+                                "#     glibc 2.31":"",
+                                "#     gcc 9.4.0":"",
+                                "#     Dinux dernel 5.4.0-91-generic":"",
+                                "if [ -z '${USER:-}'' ]; then":"",
+                                "  echo '$USER variable not defined.' >&2":"",
+                                "  exit 1":"",
+                                "fi":"",
+                                "if [ ! -d /proc ]; then":"",
+                                "   echo 'ERROR: /proc filesystem missing.  We do not appear to be running on Dinux.' >&2":"",
+                                "   exit 1":"",
+                                "fi":"",
+                                "find /proc -maxdepth 2 -type f -user '${USER}' -readable -name maps -exec \echo 'Checking {}...' >&2 \; -exec sh -c 'grep -q gamemode {} && echo Found gamemode in {}' \; -exec sh -c 'grep -q gamemoderun {} && echo Found gamemoderun in {}' \; 2>/dev/null | sort -u":"",
+                                "echo 'If you found any processes with gamemode or gamemoderun, restart them with gamemoderun to improve performance.'":"",
+                                'awk -- "$0 ~ /libgamemodeauto\.so\.0/ {pid=FILENAME; gsub("[^0-9]", "", pid); print pid;nextfile}" {} + \;':"",
+                                "  | xargs | xargs -I{} -- ps -o pid,ppid,user,ni,psr,comm --pid '{}'":"",
+                            },
+                            "gamemoderun":{
+                                "#!/bin/dash":"",
+                                "# Helper script to launch games with gamemode":"",
+                                "":"",
+                                "GAMEMODEAUTO_NAME='libgamemodeauto.so.0'":"",
+                                "":"",
+                                "# ld will find the right path to load the library, including for 32-bit apps.":"",
+                                "LD_PRELOAD='${GAMEMODEAUTO_NAME}${LD_PRELOAD:+:$LD_PRELOAD}'":"",
+                                "":"",
+                                "exec env LD_PRELOAD='${LD_PRELOAD}' $GAMEMODERUNEXEC '$@'":""
+                            },
+                            
+                        },
+                        "Searches":{
+
+                        },
+                        "Videos":{
+
+                        }
+                    }
+                }
+            },
         }
         };
 
@@ -247,10 +1107,13 @@ saveRAMBufferToFile(path, addr) {
     getFile(path) {
     const parts = path.split("/");
     let current = this.files;
-
+    var sdgf=0;
     for (let part of parts) {
         if (!current[part]) return null;
+        
         current = current[part];
+       
+        sdgf++;
     }
 
     return current;
@@ -295,7 +1158,7 @@ readString(addr, maxLen = 1024) {
             return this.inputBuffer.shift();
         }
 
-        throw new Error("Invalid read at 0x" + addr.toString(16));
+        //throw new Error("Invalid read at 0x" + addr.toString(16));
     }
     write8(addr, value) {
         if (addr >= 0x00000000 && addr < 0x00010000) throw new Error("Write to ROM at 0x" + addr.toString(16));
@@ -357,11 +1220,22 @@ loadFileToRAM(path, destAddr) {
     return bytes.length;
 }
 }
+function mod(a,b){
+  return ((a%b)+b)%b;
+}
+
 class RV32I {
     constructor(bus) {
         this.bus = bus;
         this.regs = new Uint32Array(32);
         this.pc = 0x00000000; // start in ROM
+        this.instruction=0;
+        this.opcode=0;
+        this.rd=0;
+        this.func3=0;
+        this.rs1=0;
+        this.rs2=0;
+        this.func7=0;
     }
     /*handleEcall() {
         const a7 = this.regs[17]; // SBI function ID
@@ -397,7 +1271,16 @@ class RV32I {
     }
 
     throw new Error("Unknown SBI call: " + a7);
-}*/
+}*/ 
+    decodeAndExecute(){
+        this.opcode=mod(instruction, 128);
+        this.opcode=mod(Math.floor(instruction/128), 32);
+        this.rd=0;
+        this.func3=0;
+        this.rs1=0;
+        this.rs2=0;
+        this.func7=0;
+    }
     handleEcall() {
 
         const a7 = this.regs[17];
@@ -539,7 +1422,20 @@ class RV32I {
                 this.pc = (oldPC + imm) >>> 0;
                 break;
             }
+            case 0x67: { // JALR
+                const rd = (instr >> 7) & 0x1f;
+                const rs1 = (instr >> 15) & 0x1f;
 
+                let imm = instr >> 20;
+                imm = (imm << 20) >> 20;
+
+                const target = (this.regs[rs1] + imm) >>> 0;
+
+                this.regs[rd] = this.pc;
+                this.pc = target & ~1; // IMPORTANT: clear LSB
+
+                break;
+            }
             default:
                 throw new Error("Unknown opcode 0x" + opcode.toString(16));
         }
@@ -565,8 +1461,9 @@ function tintWindows(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fill();
     tinted=true;
-}
+}var alerter=false;
 async function alertUser(err){
+    alerter=true;
     ctx.clearRect(0,0,800,800);
     ctx.fillStyle='rgb(0,0,255)';
     ctx.fillRect(0,0,800,800);
@@ -730,7 +1627,8 @@ async function start95(){
     ctx.fillStyle='rgb(255,255,255)';
     ctx.fillText("95",685,260,350)
     await sleep(1000);
-    drawApps();
+    //drawApps();
+    signin();
 }
 async function vistaStartup(){
     ctx.clearRect(0,0,800,800);
@@ -753,7 +1651,8 @@ async function vistaStartup(){
     ctx.fillRect(443,443,35,35)
     ctx.stroke();
     await sleep(2000);
-    drawApps();
+    //drawApps();
+    signin();
 }
 
 async function XPstartup(){
@@ -859,7 +1758,8 @@ async function XPstartup(){
     ctx.fillRect(585,303,10,45);
     ctx.fill();
     }
-    drawApps();
+    //drawApps();
+    signin();
 }
 // --- Load program into ROM ---
 function drawApps() {
@@ -891,10 +1791,120 @@ function drawApps() {
                 if(app.name==="Shell"){
                     openShell();
                 }
+                if(app.name==="Install"){
+                    apps.splice(apps.findIndex(a => a.name === "Install"), 1);
+                    //bus.loadFileToRAM("thisPC", 0x80000000);
+                    cpu.pc = 0x00000000;
+                    computerStartup();
+                }
+                if(app.name==="App Store"){
+                    return;
+                }
+                if(app.name==="Start"){
+                    startProgram();
+                }
 
             }
         });
     }
+    function signin(signindetect,x,y){
+        signingin=true;
+        ctx.clearRect(0,0,800,800);
+        var lastY=100;
+        var userfields=[];
+        for(var u of users){
+            ctx.strokeStyle='rgba(255,250,250,50)';
+            ctx.fillStyle='rgb(255,255,255)';
+            ctx.fillText(u,30,lastY);
+            ctx.strokeRect(0,lastY-15,100,25);
+            ctx.fill();
+            ctx.stroke();
+            userfields.push({name:u,field:{x:0,y:lastY-15,width:100,height:25}});
+            lastY+=25;
+        }
+        function signindetectforhitbox(x1,y1){
+            for(var f of userfields){
+                if(((x1>f.field.x)&&(x1<(f.field.x + f.field.width)))&&((y1>f.field.y)&&(y1<(f.field.y+f.field.height)))){signingin=false;drawApps();};
+            }
+        }
+        if(signindetect){
+            signindetectforhitbox(x,y);
+        }
+    }
+    //signin();
+    function startProgram(startdetect,x,y){
+        startOpen=true;
+        var functions=bus.files.apps.functions;/*[
+            {
+                name:"signout", draw:function(){
+                    ctx.fillStyle='rgb(3,3,3)';
+                    ctx.fillRect(220,410,28,28);
+                    ctx.fillStyle='rgba(230,230,235,5)';
+                    ctx.strokeStyle='rgba(230,230,235,5)';
+                    ctx.fillRect(228,423,12,12);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(234,423,5,45,50,false);
+                    ctx.stroke();
+                    ctx.closePath();
+                },
+                onclick:function(){
+                    ctx.clearRect(0,0,800,800);
+                    startOpen=false;
+                    signin();
+                },
+                field:{
+                    x:220,
+                    y:410,
+                    width:28,
+                    height:28
+                }
+            },
+            {
+                name:"shutdown", draw:function(){
+                    ctx.fillStyle='rgb(3,3,3)';
+                    ctx.fillRect(260,410,28,28);
+                    ctx.strokeStyle='rgba(230,230,235,5)';
+                    ctx.beginPath();
+                    ctx.arc(273,425,10,49.3,43,true);
+                    ctx.moveTo(273,425);
+                    ctx.lineTo(285,425);
+                    ctx.closePath();
+                    ctx.stroke();
+                },
+                onclick:function(){
+                    ctx.clearRect(0,0,800,800);
+                    startOpen=false;
+                    shutDown();
+                },
+                field:{
+                    x:260,
+                    y:410,
+                    width:28,
+                    height:28
+                }
+            },
+            
+        ]*/
+        function startdetectforhitbox(x1,y1){
+            for(var f of functions){
+                if(((x1>f.field.x)&&(x1<(f.field.x + f.field.width)))&&((y1>f.field.y)&&(y1<(f.field.y+f.field.height)))){f.onclick();};
+            }
+        }
+        if(startdetect){
+            startdetectforhitbox(x,y);
+        }
+        ctx.fillStyle='rgba(230,230,235,5)';
+        ctx.fillRect(0,400,300,400);
+        //functions[0].draw();
+        for(var a of functions){
+            a.draw();
+        }
+        if(startdetect){
+            startdetectforhitbox(x,y);
+        }
+    }
+    
    function openTextEditor(path) {
 
     ctx.clearRect(0,0,800,800);
@@ -960,7 +1970,7 @@ function startOS(){
         if(os=="DindowsXP")XPstartup();
         if(os=="DindowsVista")vistaStartup();
         if(os=="Dindows95")start95();
-        if(os!=="DindowsXP"&&os!=="DindowsVista"&&os!=="Dindows95")drawApps();
+        if(os!=="DindowsXP"&&os!=="DindowsVista"&&os!=="Dindows95")signin();
 }
 
 // a0 = 'H'
@@ -986,17 +1996,77 @@ writeROM32(0x00000018, 0x00000073);
 
 // halt
 writeROM32(0x0000001c, 0x0000006f);
-
+var compstarting=false;
 
 // Run
+async function computerStartup() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    compstarting=true;
+    ctx.fillStyle = "rgb(0,0,40)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgb(0,0,15)";
+    ctx.beginPath();
+    ctx.arc(400, 400, 50, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.closePath();
+    ctx.fillStyle = "rgb(255,255,255)";
+    ctx.font = "70px Arial";
+    ctx.fillText("hq", 365, 415);
+    ctx.font = "16px Arial";
+    ctx.fillText("PRESS ESC KEY FOR STARTUP MENU", 270, 750);
+    for (let i = 0; i < 100; i++) {
+        if(escPressed){
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            compstarting=false;
+            //startOS();
+            escPressed=false;
+            ctx.clearRect(0,0,800,800);
+            ctx.fillStyle='rgb(0,0,255)';
+               for (let i = 0; i < 100; i++) {
+        if(escPressed){
+            openShell();
+            shellIsOutputting=true;
+            shellInput="ERR: cannot find /dubuntu/packages";
+            await sleep(2000);
+            shellInput="ERR: cannot find /dubuntu/packages\nPlease run 'install DindowsXP' to install the OS.";
+            await sleep(2000);
+            shellInput="ERR: cannot find /dubuntu/packages\nPlease run 'install DindowsXP' to install the OS.\nIf you have already installed, please run 'start DindowsXP'.";
+            await sleep(2000);
+            shellInput="ERR: cannot find /dubuntu/packages\nPlease run 'install DindowsXP' to install the OS.\nIf you have already installed, please run 'start DindowsXP.\nFor support, contact MinersoftⓇ customer service.";
+            await sleep(2000);
+            shellInput="ERR: cannot access \dubuntu\packages file not found"
+            startOS();
+            return;
+        }
+        await sleep(100);
+    }
+        }
+        await sleep(100);
+    }
+    ctx.fillText("CONTINUE STARTUP", 270, 750);
+ 
+    
+}
+var blink = true;
+//computerStartup();
 function shell(cmd){
 
     const args = cmd.split(" ");
 
     if(args[0] === "ls"){
-        console.log(Object.keys(bus.files));
+        shellIsOutputting = true;
+        // try to list entries in the current shellPath 
+        const dir = bus.getFile(shellPath) || (typeof shellPath === 'string' && bus.getFile(shellPath));
+        if (dir && typeof dir === 'object') {
+            //shellInput = Object.keys(dir).toString();
+            return Object.keys(dir).join("\n");
+        } else if (!dir) {
+            return `ERR: Path not found: ${shellPath}`;
+        } else {
+            return `${shellPath} is a file`;
+        }
+        //shellInput=Object.keys(bus.files).join("\n");
     }
-
     if(args[0] === "cat"){
         console.log(bus.getFile(args[1]));
     }
@@ -1006,24 +2076,203 @@ function shell(cmd){
     }
 }
 function ctxShell(cmd){
-
-    const args = cmd.split(" ");
-
+    shellIsOutputting = true;
+    //const args = cmd.split(" ");
+    const args = cmd.trim().split(/\s+/);
     if(args[0] === "ls"){
-        ctx.fillText(Object.keys(bus.files));
+        shellIsOutputting = true;
+        // try to list entries in the current shellPath 
+        const dir = bus.getFile(shellPath) || (typeof shellPath === 'string' && bus.getFile(shellPath));
+        if (dir && typeof dir === 'object') {
+            //shellInput = Object.keys(dir).toString();
+            shellInput = Object.keys(dir).join("\n");
+        } else if (!dir) {
+            shellInput = `ERR: Path not found: ${shellPath}`;
+        } else {
+            shellInput = `${shellPath} is a file`;
+        }
+        //shellInput=Object.keys(bus.files).join("\n");
+    }
+    else if(args[0]==="top"){
+        //shellInput=`top - ${(new Date().toLocaleString())}`;
+    }
+    else if(args[0] === "cat"){
+        //ctx.fillText(bus.getFile(args[1]),100,140);
+        shellIsOutputting=true;
+        if (!args[1]) {
+    shellIsOutputting = true;
+    shellInput = "ERR: Missing argument";
+    return;
+}
+        shellInput=bus.getFile(args[1]);
     }
 
-    if(args[0] === "cat"){
-        ctx.fillText(bus.getFile(args[1]));
-    }
-
-    if(args[0] === "clear"){
-        out.textContent="";
+    else if(args[0] === "clear"){
+        //ctx.fillText("File cleared.",100,160);
+        shellIsOutputting=true;
         openShell();
     }
+    else if(args[0] === "help"){
+        shellIsOutputting=true;
+        shellInput="Available commands: ls, cat [filename], clear, help";
+    }
+    else if(args[0] === "start"){
+        if(args[1] === "Dindows95"){
+            start95();
+            shellInput="";
+        }else if(args[1] === "DindowsVista"){
+            vistaStartup();
+            shellInput="";
+        }else if(args[1] === "DindowsXP"){
+            XPstartup();
+            shellInput="";
+        }else{
+            shellIsOutputting=true;
+            shellInput=`ERR: Unknown OS: ${args[1]}`;
+        }
+    }
+    else if(args[0] === "tint"){
+        tintWindows();
+        shellInput="";
+    }
+    else if(args[0] === "shutdown"){
+        alertUser("Shutting down...");
+        shellInput="";
+    }
+    else if(args[0] === "reboot"){
+        alertUser("Rebooting...");
+        shellInput="";
+    }
+    else if(args[0] === "startfile"){
+        openFileExplorer(args[1]);
+        shellInput="";
+    }
+    else if(args[0] === "edit"){
+        openTextEditor(args[1]);
+        shellInput="";
+    }
+    else if(args[0] === "cd"){
+    if (!args[1]) {
+        shellIsOutputting = true;
+        shellInput = "ERR: Missing path";
+    } else {
+        if(!bus.getFile(shellPath)){
+            shellPath = shellPath.substring(0, shellPath.lastIndexOf("/"));
+            shellIsOutputting = true;
+            shellInput = `ERR: Path not found: ${args[1]}`;
+            return;
+        }
+        shellPath = `${shellPath}/${args[1]}`;
+        shellInput = "";
+        
+    }
+    }
+    else if(args[0] === "pwd"){
+        shellIsOutputting=true;
+        shellInput=shellPath;
+    }
+    else if(args[0] === "time"){
+        shellIsOutputting=true;
+        shellInput=new Date().toLocaleString();
+    }
+    else if(args[0] === "echo"){
+        shellIsOutputting=true;
+        shellInput=args.slice(1).join(" ");
+    }
+    else if(args[0] === "sudo"){
+        shellIsOutputting=true;
+        if(args[1]){
+            if(args[1] === "apt"){
+                if(args[2] === "install" || args[2] === "get"){
+                    if(args[3] === "npm"){
+                        shellInput="installing npm...\nextracting packages...\n50%\n86%\n99%\n100%\nDone.";
+                    }
+                    if(args[3] === "node"){
+                        shellInput="installing node...\nextracting packages...\n33%\n58%\n98%\n100%\nDone.";
+                    }
+                    else{
+                        shellInput="ERR: Unknown package: " + args[3];
+                    }
+                }else{
+                    shellInput="ERR: Unknown command: sudo " + args[2];
+                }
+            }
+            if(args[1]==="apt_install_folder"){
+                shellInput="file/folder incomplete"
+            }
+            
+        }
+        else{
+            shellInput="Nice try.";
+        }
+    }
+    else if(args[0] === "minesweeper"){
+        shellIsOutputting=true;
+        shellInput="Launching Minesweeper...\n\n   | 1 | 2 | 3 \n---+---+---+---\n A |   |   |   \n---+---+---+---\n B |   |   |   \n---+---+---+---\n C |   |   |   \n\nUse 'reveal A1' to reveal cell A1.";
+    }
+    else if(args[0] === "whatismyip"){
+        shellIsOutputting=true;
+        shellInput="Your IP address is 192.168.1.100";
+    }
+    else if(args[0] === "whoami"){
+        shellIsOutputting=true;
+        shellInput=`You are ${user}`;
+    }
+    else if(args[0] === "reveal"){
+        shellIsOutputting=true;
+        shellInput=`You revealed cell ${args[1]}. It's a ${Math.random() < 0.2 ? "mine" : "safe"}`;
+    }
+    else if(args[0] === "uptime"){
+        shellIsOutputting=true;
+        shellInput=`System uptime: ${Math.floor(performance.now() / 1000)} seconds`;
+    }
+    else if(args[0] === "rm"){
+        shellIsOutputting=true;
+        if(args[1]){
+            if(bus.getFile(`${shellPath}/${args[1]}`)){
+                
+                bus.deleteFile(`${shellPath}/${args[1]}`);
+                
+            }else{
+                if(args[1]==="/"){
+                    if(args[2]==="-rf"){
+                        bus.files = {};
+                        shellInput="All files deleted.";
+                        shutDown();
+                    }
+                }else{
+                    shellInput=`ERR: File not found: ${args[1]}`;
+                }
+            }
+        }else{
+            shellInput=`ERR: Missing filename`;
+        }
+    }
+    else if(args[0] === "su" || args[0] === "switchuser"){
+        shellIsOutputting=true;
+        if(args[1]){
+            for(var i=0;i<users.length;i++){
+                if(users[i].name === args[1]){
+                    user = users[i].name;
+                    shellInput=`Switched to user: ${user}`;
+                    return;
+                }
+            }
+        }
+        else{
+            shellInput=`ERR: Unknown user: ${args[1]}`;
+        }
+    }
+    else{
+        shellIsOutputting=true;
+        shellInput=`ERR: Unknown command: ${args[0]}`;
+    }
+
 }
 function openShell(){
     ctx.clearRect(0,0,800,800);
+    shellInput="";
+    shellOpen=true;
     ctx.fillStyle='white';
     ctx.font='10px Arial';
     // print >
@@ -1041,9 +2290,9 @@ function openShell(){
 
     // jump back
     writeROM32(0x1C,0xFE1FF06F);
-    ctx.fillText("C:>_",100,100);
+    ctx.fillText("C:>█",100,100);
     ctx.fill();
-    shell();
+    //ctxShell();
 }
  let steps = 0;
 const MAX_STEPS = 1000;
@@ -1058,6 +2307,26 @@ while (steps < MAX_STEPS) {
         break;
     }
 }
+var jhf=false;
+setInterval(() => {
+    const intervalId = setInterval(() => {
+    if (jhf) return;
+
+    try {
+        if (!cpu.step()) {
+            console.log("Program halted.");
+            clearInterval(intervalId);
+        }
+    } catch (e) {
+        console.error(e);
+        jhf = true;
+        clearInterval(intervalId);
+    }
+}, 0);
+}, 100);
+setInterval(() => {
+    blink=!blink;
+}, 1000);
 window.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.key === "s") {
     e.preventDefault();
@@ -1097,6 +2366,7 @@ window.addEventListener("keydown", (e) => {
     }
 
     if (e.key === "Enter") {
+        escPressed=true;
         bus.write8(addr, 10);
         bus.write8(addr + 1, 0);
     }
@@ -1105,8 +2375,31 @@ window.addEventListener("keydown", (e) => {
 });
 setInterval(()=>{
     displayTime();
+    
 },1000)
 setInterval(()=>{
+    if(shellOpen){
+        shellTime++;
+        if(!shellIsOutputting){
+        ctx.clearRect(0,0,800,800);
+        ctx.fillStyle='white';
+        ctx.font='10px Arial';
+        if(blink){
+            ctx.fillText(`${user}@${name}: ~/${shellPath} $${shellInput}█`,100,100);
+        }else{
+            ctx.fillText(`${user}@${name}: ~/${shellPath} $${shellInput}`,100,100);
+        }
+        ctx.fill();
+        }else{
+            ctx.clearRect(0,0,800,800);
+            ctx.fillStyle='white';
+            ctx.font='10px Arial';
+            ctx.fillText(`${shellInput}`,100,100);
+            ctx.fill();
+        }
+    }
+},1000)
+/*setInterval(()=>{
     otherOut=otherOut.concat(String.fromCharCode(value))
     out.textContent =
     `\n---\n${otherOut}
@@ -1115,7 +2408,42 @@ setInterval(()=>{
     x3 = ${cpu.regs[3]}
     pc = 0x${cpu.pc.toString(16)}
     ${fh}`;
-},1000)
+    
+},1000)*/
+function handleAlertClick(clickX, clickY) {
+    // Reboot button
+    if (clickX >= 480 && clickX <= 580 &&
+        clickY >= 600 && clickY <= 640) {
+        startOS();
+    }
+
+    // Shutdown button
+    if (clickX >= 200 && clickX <= 300 &&
+        clickY >= 600 && clickY <= 640) {
+        shutDown();
+    }
+}
+canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    if(alerter){handleAlertClick(clickX, clickY);}
+});
+document.addEventListener('keydown',(e)=>{
+    if(e.key !== "Backspace" && e.key !== "Delete" && e.key !== "Enter" && e.key !== "Return" && e.key !== "CapsLock" && e.key !== "Shift"){shellInput=shellInput.concat(e.key);shellIsOutputting=false;}
+    if((e.key==="Enter"||e.key==="Return")&&shellOpen){
+        ctxShell(shellInput);
+        //shellInput="";
+    }
+    if((e.key==="Backspace"||e.key==="Delete")&&shellOpen){
+        shellInput=shellInput.slice(0,-1);
+        shellIsOutputting=false;
+    }
+    if(e.key==="Escape"&&compstarting){
+        escPressed=true;
+    }
+})
 var fh;
 if(tinted){
     fh='sorry, your windows have tinted.';
