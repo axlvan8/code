@@ -1,0 +1,45 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <title>Simplified x86-64 Emulator</title>
+        <meta charset="UTF-8">
+        <script src="cpu.js"></script>
+    </head>
+    <body>
+        <h1>Simplified x86-64 Emulator</h1>
+        <p>Enter your assembly code below:</p>
+        <p>Address</p>
+        <input type="text" id="address" value="0x0000000000401000">
+        <p>Data: </p>
+        <input type="text" id="data" value="0x0000000000000000">
+
+        <button onclick="cpu.bus.writeRAM(parseInt(document.getElementById('address').value, 16), parseInt(document.getElementById('data').value, 16))">Write</button><br>
+        <button onclick="document.getElementById('read-output').textContent = 'Read Value: ' + cpu.bus.readRAM(parseInt(document.getElementById('address').value, 16)).toString(16)">Read</button><br>
+        <button onclick="Boot(bus, cpu)">boot</button>
+        <pre id="output"></pre>
+        <p id="read-output"></p>
+        <script>
+            
+            const output = document.getElementById('output');
+            output.textContent = '';
+
+            
+                const bus = new Bus();
+                const bios = new Bios(bus);
+                const cpu = new CPU(bus);
+
+                function run() {
+                    cpu.run();
+                    output.textContent = 'CPU State:\n' + cpu.toString();
+                }
+                async function update() {
+                    await wait(200); // Wait for 100 milliseconds
+                    cpu.execute();
+                    output.textContent = 'CPU State:\n' + `RIP: ${cpu.RIP.toString(16)}\n` + `RAX: ${cpu.RAX.toString(16)}\n` + `RBX: ${cpu.RBX.toString(16)}\n` + `RCX: ${cpu.RCX.toString(16)}\n` + `RDX: ${cpu.RDX.toString(16)}\n` + `RSP: ${cpu.RSP.toString(16)}\n` + `RBP: ${cpu.RBP.toString(16)}\n` + `RSI: ${cpu.RSI.toString(16)}\n` + `RDI: ${cpu.RDI.toString(16)}\n` + `HLT: ${cpu.HALT}\n`;
+                    requestAnimationFrame(update);
+                }
+                update();
+            
+            
+        </script>
+</html>

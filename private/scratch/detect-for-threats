@@ -1,0 +1,27 @@
+import sys
+
+
+#from https://scratch.mit.edu/projects/1317121509
+project = sys.argv[1]
+#print("Potential Threat Detected" if b"javascript" in open(project, "rb").read() else "File appears safe")
+
+#from Google Gemini
+import zipfile
+def scan_scratch_project(file_path):
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            # Loop through every file inside the .sb3 archive (SVGs, JSON, etc.)
+            for file_name in zip_ref.namelist():
+                with zip_ref.open(file_name) as file_content:
+                    content = file_content.read().lower()
+                    # Check for javascript or common canvas exploit triggers
+                    if b"javascript" in content or b"<script" in content:
+                        return f"Potential Threat Detected in internal file: {file_name}"
+                        
+        return "File appears safe"
+    except zipfile.BadZipFile:
+        return "Error: Not a valid Scratch .sb3 archive"
+    except FileNotFoundError:
+        return "Error: File not found"
+
+print(scan_scratch_project(project))

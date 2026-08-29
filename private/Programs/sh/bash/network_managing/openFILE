@@ -1,0 +1,9 @@
+#!/usr/bin/python3
+import sys
+import subprocess
+
+print("opening window...")
+path = sys.argv[1]
+
+# xdg-open triggers the system's default handler for folders or files
+subprocess.run(["xdg-open", path])

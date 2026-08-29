@@ -142,6 +142,20 @@ class Bus {
         this.fileExplorer=document.getElementById("file");
         this.files = {
             apps:{
+                main_apps:{
+                    desktop:apps,
+                    all:[
+                        { name: "File Explorer", color: 'rgb(235,204,52)' },
+                        { name: "Text Editor", color: 'rgb(255,255,255)'},
+                        { name: "Shell", color: 'rgb(2,2,2)'},
+                        { name: "App Store",color: 'rgb(0,0,100)'},
+                        { name: "icegorrilla browser", color:'rgb(100,100,250)'},
+                        { name: "Settings", color:'rgb(100,100,100)'},
+                        { name: "driver manager", color:'rgb(0,100,0)'},
+                        { name: "disc usage analyzer", color:'rgb(100,100,0)'},
+                        { name: "users and accounts", color:'rgb(0,0,250)'},
+                    ]
+                },
                  functions:[
                 {name:"signout", draw:function(){
                     ctx.fillStyle='rgb(3,3,3)';
@@ -281,8 +295,9 @@ class Bus {
                                     "external_extensions.json":{
                                         "{":"",
                                         '    "jdsgfgsadfjgdsuyfguydstfyesdikaiu":{':"",
-                                        '        "external_update_url':"https://clients2.doogle.com/service/update2/crx"
-                                        
+                                        '        "external_update_url':"https://clients2.doogle.com/service/update2/crx",
+                                        '     }':"",
+                                        '}':""
                                     }
                                 },
                                 "locales":{},
@@ -1291,7 +1306,7 @@ class RV32I {
             this.bus.write8(0x10000000, a0 & 0xff);
             return;
         }
-
+        
         // getchar
         if (a7 === 3) {
             this.regs[10] = this.bus.read8(0x10000004);
@@ -1832,64 +1847,60 @@ function drawApps() {
         }
     }
     //signin();
-    function startProgram(startdetect,x,y){
-        startOpen=true;
-        var functions=bus.files.apps.functions;/*[
-            {
-                name:"signout", draw:function(){
-                    ctx.fillStyle='rgb(3,3,3)';
-                    ctx.fillRect(220,410,28,28);
-                    ctx.fillStyle='rgba(230,230,235,5)';
-                    ctx.strokeStyle='rgba(230,230,235,5)';
-                    ctx.fillRect(228,423,12,12);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(234,423,5,45,50,false);
-                    ctx.stroke();
-                    ctx.closePath();
-                },
-                onclick:function(){
-                    ctx.clearRect(0,0,800,800);
-                    startOpen=false;
-                    signin();
-                },
-                field:{
-                    x:220,
-                    y:410,
-                    width:28,
-                    height:28
+    function findfunction(args){
+        
+            var app={name:args}
+                if(app.name==="File Explorer"){
+                    openFileExplorer("thisPC");
                 }
-            },
-            {
-                name:"shutdown", draw:function(){
-                    ctx.fillStyle='rgb(3,3,3)';
-                    ctx.fillRect(260,410,28,28);
-                    ctx.strokeStyle='rgba(230,230,235,5)';
-                    ctx.beginPath();
-                    ctx.arc(273,425,10,49.3,43,true);
-                    ctx.moveTo(273,425);
-                    ctx.lineTo(285,425);
-                    ctx.closePath();
-                    ctx.stroke();
-                },
-                onclick:function(){
-                    ctx.clearRect(0,0,800,800);
-                    startOpen=false;
-                    shutDown();
-                },
-                field:{
-                    x:260,
-                    y:410,
-                    width:28,
-                    height:28
+                if(app.name==="Text Editor"){
+                    openTextEditor();
                 }
-            },
+                if(app.name==="Shell"){
+                    openShell();
+                }
+                if(app.name==="Install"){
+                    apps.splice(apps.findIndex(a => a.name === "Install"), 1);
+                    //bus.loadFileToRAM("thisPC", 0x80000000);
+                    cpu.pc = 0x00000000;
+                    computerStartup();
+                }
+                if(app.name==="App Store"){
+                    return;
+                }
+                if(app.name==="Start"){
+                    startProgram();
+                }
+                if(app.name==="user and accounts"){
+                   openSettings("uaa");
+                }
+
             
-        ]*/
+        };
+    function openSettings(section){
+        ctx.clearRect(0,0,800,800);
+        if(section==="uaa"){
+            
+        }
+    }
+    /*function startProgram(startdetect,x,y){
+        startOpen=true;
+        var functions=bus.files.apps.functions;
+        var lastY=470;
+        var appfields=[];
         function startdetectforhitbox(x1,y1){
             for(var f of functions){
                 if(((x1>f.field.x)&&(x1<(f.field.x + f.field.width)))&&((y1>f.field.y)&&(y1<(f.field.y+f.field.height)))){f.onclick();};
             }
+            for(var b of appfields){
+                if(((x1>b.field.x)&&(x1<(b.field.x + b.field.width)))&&((y1>b.field.y)&&(y1<(b.field.y+b.field.height)))){console.log(appfields);b.onclick();};
+            }
+        }
+
+        for(var b of bus.files.apps.main_apps.all){
+            appfields.push({field:{x:10,y:lastY-25,width:150,height:35},onclick:function(){findfunction(b.name)}});
+            ctx.fillStyle="black";
+            lastY+=35;
         }
         if(startdetect){
             startdetectforhitbox(x,y);
@@ -1900,11 +1911,111 @@ function drawApps() {
         for(var a of functions){
             a.draw();
         }
+        ctx.strokeStyle="black";
+        ctx.beginPath();
+        ctx.moveTo(0,448);
+        ctx.lineTo(300,448);
+        ctx.closePath();
+        ctx.stroke();
+        lastY=470;
+        for(var b of bus.files.apps.main_apps.all){
+            ctx.font="30px Arial";
+            ctx.fillStyle=b.color;
+            ctx.fillRect(10,lastY-25,150,35);
+            ctx.fillStyle="black";
+            ctx.fillText(b.name, 50,lastY,100);
+            ctx.fill();
+            lastY+=35;
+        }
         if(startdetect){
             startdetectforhitbox(x,y);
         }
+    }*/
+    function startProgram(startdetect, x, y) {
+    startOpen = true;
+
+    let functions = bus.files.apps.functions;
+    let appfields = [];
+
+    function startdetectforhitbox(x1, y1) {
+        for (let f of functions) {
+            if (
+                x1 > f.field.x &&
+                x1 < (f.field.x + f.field.width) &&
+                y1 > f.field.y &&
+                y1 < (f.field.y + f.field.height)
+            ) {
+                f.onclick();
+            }
+        }
+
+        for (let b of appfields) {
+            if (
+                x1 > b.field.x &&
+                x1 < (b.field.x + b.field.width) &&
+                y1 > b.field.y &&
+                y1 < (b.field.y + b.field.height)
+            ) {
+                console.log(appfields);
+                b.onclick();
+            }
+        }
     }
-    
+
+    let lastY = 470;
+
+    for (let b of bus.files.apps.main_apps.all) {
+        appfields.push({
+            field: {
+                x: 10,
+                y: lastY - 25,
+                width: 150,
+                height: 35
+            },
+            onclick: function () {
+                findfunction(b.name);
+            }
+        });
+
+        lastY += 35;
+    }
+
+    if (startdetect) {
+        startdetectforhitbox(x, y);
+    }
+
+    ctx.fillStyle = 'rgba(230,230,235,5)';
+    ctx.fillRect(0, 400, 300, 400);
+
+    for (let a of functions) {
+        a.draw();
+    }
+
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.moveTo(0, 448);
+    ctx.lineTo(300, 448);
+    ctx.closePath();
+    ctx.stroke();
+
+    lastY = 470;
+
+    for (let b of bus.files.apps.main_apps.all) {
+        ctx.font = "30px Arial";
+
+        ctx.fillStyle = b.color;
+        ctx.fillRect(10, lastY - 25, 150, 35);
+
+        ctx.fillStyle = "black";
+        ctx.fillText(b.name, 50, lastY, 100);
+
+        lastY += 35;
+    }
+
+    if (startdetect) {
+        startdetectforhitbox(x, y);
+    }
+}
    function openTextEditor(path) {
 
     ctx.clearRect(0,0,800,800);
